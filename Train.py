@@ -99,8 +99,9 @@ def train(epoch, model, train_loader, optimizer, writer, modelname,print_freq=10
         optimizer.zero_grad()
         data, target = data.to(device), target.to(device)
         logits = model(data)
+        
         loss = F.cross_entropy(logits, target)
-
+        
         loss.backward()
         optimizer.step()
 

@@ -5,7 +5,6 @@ import torch.nn as nn
 
 class PointNet(nn.Module):
 
-    __name__ = 'pointnet'
 
     def __init__(
             self,

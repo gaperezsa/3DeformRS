@@ -18,4 +18,4 @@ def modelnet10(split: str = 'train',batch_size_for_loader: int = 10,sampledPoint
 
     #declare the model data and corresponding data loader
     modeldata = tg.datasets.modelnet.ModelNet(root=dataset_root, name='10', train=train,pre_transform=pre_transforms, transform=None)
-    return tg.data.DataLoader(modeldata,batch_size_for_loader,False)
+    return tg.data.DataLoader(modeldata,batch_size_for_loader,True)
