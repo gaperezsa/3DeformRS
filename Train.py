@@ -11,12 +11,12 @@ from torch.optim.lr_scheduler import StepLR
 
 
 dataset_choices = ['modelnet10', 'modelnet40']
-model_choices = ['pointnet', 'pointnet++']
+model_choices = ['pointnet2']
 aug_choices = ['nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform', 'DCT']
 
 parser = ArgumentParser(description='PyTorch code for GeoCer')
-parser.add_argument('--dataset', type=str, default='modelnet10', required=True, choices=dataset_choices)
-parser.add_argument('--model', type=str, default='pointnet', required=True, choices=model_choices, help='model name for training')
+parser.add_argument('--dataset', type=str, default='modelnet40', required=True, choices=dataset_choices)
+parser.add_argument('--model', type=str, default='pointnet2', required=True, choices=model_choices, help='model name for training')
 parser.add_argument('--experiment_name', type=str, required=True, help='name of directory for saving results')
 parser.add_argument('--aug_method', type=str, default='nominal', required=True, choices=aug_choices, help='type of augmentation for training')
 parser.add_argument('--sigma', type=float, default=0.05, metavar='N', help='sigma value used for augmentation')
@@ -34,7 +34,7 @@ parser.add_argument('--sampled_points', type=int, default=4096, help='points to 
 args = parser.parse_args()
 
 
-#
+
 batch_exp_path = 'output/train/'
 if not os.path.exists(batch_exp_path):
     os.makedirs(batch_exp_path, exist_ok=True)
@@ -81,8 +81,10 @@ def train(epoch, model, train_loader, optimizer, writer, modelname,print_freq=10
     
     MB = 1024.0**2
     GB = 1024.0**3
-    for batch_idx,  (_, data, pointsPerCloud, target) in enumerate(train_loader):
+    counter = 0
+    for data in train_loader:
         
+        '''
         #these are tuples, the first position is a name, we are interested in the tensors, the second position
         data=data[1]
         pointsPerCloud = pointsPerCloud[1]
@@ -95,40 +97,43 @@ def train(epoch, model, train_loader, optimizer, writer, modelname,print_freq=10
         #data needs to be of dimension Batches x pointsPerCloud x 3 for this implementation of pointnet to process it
         if modelname == 'pointnet':
             data = reshapeBatchInput(data,pointsPerCloud)
-        
+
+        '''
+
         optimizer.zero_grad()
-        data, target = data.to(device), target.to(device)
+        data= data.to(device)
         logits = model(data)
-        
-        loss = F.cross_entropy(logits, target)
-        
+        loss = F.nll_loss(logits, data.y)
         loss.backward()
         optimizer.step()
 
-        if batch_idx % print_freq == 0:
+        if counter % print_freq == 0:
             print(
                 '+ Epoch: {}. Iter: [{}/{} ({:.0f}%)]. Loss: {:.5f}. '
                 'Max mem: {:.2f}MB = {:.2f}GB.'
                 .format(
                     epoch,
-                    batch_idx * len(data),
+                    counter * len(data.y),
                     len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader),
+                    100. * counter / len(train_loader),
                     loss / len(data),
                     torch.cuda.max_memory_allocated(device) / MB,
                     torch.cuda.max_memory_allocated(device) / GB,
                 ),
                 flush=True)
-
+        counter += 1
     writer.add_scalar('train/train_loss', loss, epoch)
+    return model
 
 
-def test(model, test_loader, device, writer, epoch,modelname):
+
+def test(model, test_loader, device, writer, epoch):
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
-        for _, data, pointsPerCloud, target in test_loader:
+        for data in test_loader:
+            '''
             #these are tuples, the first position is a name, we are interested in the tensors, the second position
             data=data[1]
             pointsPerCloud = pointsPerCloud[1]
@@ -141,11 +146,11 @@ def test(model, test_loader, device, writer, epoch,modelname):
             #data needs to be of dimension Batches x pointsPerCloud x 3 for this implementation of pointnet to process it
             if modelname == 'pointnet':
                 data = reshapeBatchInput(data,pointsPerCloud)
-            
-            data, target = data.to(device), target.to(device)
+            '''
+            data= data.to(device)
             output = model(data)
-            test_loss += F.cross_entropy(output, target).item()
-            correct += (output.max(1)[1] == target).sum().item()
+            test_loss += F.nll_loss(output, data.y).item()
+            correct += (output.max(1)[1] == data.y).sum().item()
     test_loss /= len(test_loader.dataset)
     test_accuracy = 100. * correct / len(test_loader.dataset)
 
@@ -167,12 +172,16 @@ def contains_nan(model):
 
 
 def main(args):
+
+
+    
     # load dataset
     if hasattr(ModelNetLoader, args.dataset):
         get_data_loaders = getattr(ModelNetLoader, args.dataset)
         if args.dataset == "modelnet10":
             num_classes = 10
-        else:
+        
+        elif args.dataset == "modelnet40":
             num_classes = 40
         
         train_loader = get_data_loaders("train",args.batch_sz,sampledPoints = args.sampled_points)
@@ -181,18 +190,20 @@ def main(args):
         raise Exception('Undefined Dataset')
 
     # load model
-    if args.model == "pointnet":
-        from Models.PointNet import PointNet
-        base_classifier = PointNet(args.sampled_points,num_classes)
+    if args.model == "pointnet2":
+        from Models.Pointnet2 import Net
+        model = Net(num_classes)
+
     else:
         raise Exception("Undefined model!")
-    model = base_classifier
+
+    #model = torch.nn.DataParallel(model)
     if torch.cuda.is_available():
         model.cuda()
-    #model = DeformWrapper(base_classifier, device, args.aug_method, args.sigma)
     # load optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
-    scheduler = StepLR(optimizer, step_size=args.step_sz, gamma=0.1)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999))
+    scheduler = StepLR(optimizer, step_size=args.step_sz, gamma=0.5)
 
     epoch_init = 0
     if args.checkpoint is not None:
@@ -208,9 +219,9 @@ def main(args):
     for epoch in range(epoch_init, args.epochs):
         args.writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], epoch)
 
-        train(epoch, model, train_loader, optimizer, args.writer,modelname = args.model, print_freq=args.print_freq)
+        model = train(epoch, model, train_loader, optimizer, args.writer,modelname = args.model, print_freq=args.print_freq)
 
-        test(model, test_loader, device, writer, epoch,modelname = args.model)
+        test(model, test_loader, device, writer, epoch)
 
         scheduler.step()
 
@@ -225,9 +236,11 @@ def main(args):
                 }, f'{args.output_path}/FinalModel.pth.tar')
         else:
             break
+    
 
+    
+    
     args.writer.close()
-
 
 if __name__ == '__main__':
 
