@@ -141,6 +141,7 @@ if __name__ == '__main__':
     #arguments passed
     parser = ArgumentParser(description='PyTorch code for GeoCer')
     parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
+    parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train (default: 200)')
     args = parser.parse_args()
 
     # setup tensorboard
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     writer = SummaryWriter(tensorboard_path, flush_secs=10)
 
     #dirs to output results
-    batch_exp_path = 'output/train/'
+    batch_exp_path = '../output/train/'
     if not os.path.exists(batch_exp_path):
         os.makedirs(batch_exp_path, exist_ok=True)
 
@@ -161,6 +162,11 @@ if __name__ == '__main__':
     # Log path: verify existence of output_path dir, or create it
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=True)
+    
+    # txt file with all params
+    info_log = os.path.join(output_path, f'info.txt')
+    print_training_params(args, info_log)
+
 
 
 
@@ -181,7 +187,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     #train and test
-    for epoch in range(1, 201):
+    for epoch in range(1, args.epochs):
         train(epoch)
         test_acc = test(test_loader)
         print('Epoch: {:03d}, Test: {:.4f}'.format(epoch, test_acc))
