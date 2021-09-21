@@ -136,8 +136,6 @@ def print_to_log(text, txt_file_path):
 
 if __name__ == '__main__':
 
-    
-
     #arguments passed
     parser = ArgumentParser(description='PyTorch code for GeoCer')
     parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
