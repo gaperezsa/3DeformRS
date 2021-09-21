@@ -9,12 +9,20 @@ from torch_geometric.datasets import ModelNet
 import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import PointConv, fps, radius, global_max_pool
-from Trainers import pointnet2Train
+import dgcnnTrain
+
+
+
+#arguments passed
+parser = ArgumentParser(description='PyTorch code for GeoCer')
+parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
+args = parser.parse_args()
+
 
 #dataset and loaders
-path = osp.join(osp.dirname(osp.realpath(__file__)),
+path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
                 'Data/Modelnet40fp')
-pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
+pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
 print(path)
 test_dataset = ModelNet(path, '40', False, transform, pre_transform)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
@@ -22,13 +30,15 @@ test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
 
 #model and optimizer
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = pointnet2Train.Net().to(device)
+model = dgcnnTrain.Net(test_dataset.num_classes, k=20).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 
 #loadTrainedModel
-checkpoint = torch.load('./output/train/porfavor/FinalModel.pth.tar')
+checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
 model.load_state_dict(checkpoint['model_param'])
 optimizer.load_state_dict(checkpoint['optimizer'])
+scheduler.load_state_dict(checkpoint['scheduler'])
 
 model.eval()
 test_loss = 0
@@ -36,7 +46,7 @@ correct = 0
 for data in test_loader:
     data = data.to(device)
     with torch.no_grad():
-        pred = model(data).max(1)[1]
+        pred = model(data).max(dim=1)[1]
         test_loss += F.nll_loss(model(data), data.y).item()
     correct += pred.eq(data.y).sum().item()
 
