@@ -1,0 +1,2 @@
+experiment_name: dgcnnIntegrityTesting | epochs: 2
+experiment_name: dgcnnIntegrityTesting | epochs: 2
