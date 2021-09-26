@@ -1,26 +1,28 @@
 import argparse
-import all_datasets
+import os.path as osp
+import torch
+import torch.nn.functional as F
 from deform_smooth import SmoothFlow
 from time import time
-import torch
 import datetime
 import os
 import math
 from torchvision.models.resnet import resnet50
 
-dataset_choices = ['ModelNet10', 'ModelNet40']
-model_choices = ['PointNet', 'PointNet++']
-certification_method_choices = ['nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT']
+dataset_choices = ['modelnet40']
+model_choices = ['pointnet2','dgcnn']
+certification_method_choices = ['rotation'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+
 
 
 parser = argparse.ArgumentParser(description='Certify many examples')
-parser.add_argument("--dataset", choices=dataset_choices, help="which dataset")
+parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
 parser.add_argument("--model", type=str, choices=model_choices, help="model name")
-parser.add_argument("--base_classifier", type=str, help="path to saved pytorch model of base classifier")
-parser.add_argument("--certify_method", type=str, default='gaussianFull', required=True, choices=certification_method_choices, help='type of certification for certification')
+parser.add_argument("--base_classifier_path", type=str, help="path to saved pytorch model of base classifier")
+parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
-parser.add_argument("--certify_batch_sz", type=int, default=400, help="cetify batch size")
+parser.add_argument("--certify_batch_sz", type=int, default=32, help="cetify batch size")
 parser.add_argument("--skip", type=int, default=1, help="how many examples to skip")
 parser.add_argument("--max", type=int, default=-1, help="stop after this many examples")
 parser.add_argument("--N0", type=int, default=100)
@@ -40,37 +42,78 @@ if not os.path.exists(args.basedir):
 args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.txt')
 
 def copy_pretrained_model(model, path_to_copy_from):
-    resnet = torch.load(path_to_copy_from)['model_param']
+    checkpoint = torch.load(path_to_copy_from)['model_param']
     # print(resnet.keys())
-    keys = list(resnet.keys())
+    keys = list(checkpoint.keys())
     count = 0
     for key in model.state_dict().keys():
-        model.state_dict()[key].copy_(resnet[keys[count]].data)
+        model.state_dict()[key].copy_(checkpoint[keys[count]].data)
         count +=1
     model = model.to('cuda')
     print('Pretrained model is loaded successfully')
     return model
 
 if __name__ == "__main__":
-    # load dataset
-    if hasattr(all_datasets, args.dataset):
-        get_data_loaders = getattr(all_datasets, args.dataset)
-        _, test_loader, num_classes = get_data_loaders(1) # process an image at a time
-    else:
-        raise Exception('Undefined Dataset')
 
     # load model
-    if args.model == "resnet18":
-        from models.resnet18 import ResNet18
-        base_classifier = ResNet18(args.dataset, 'cuda')
-        checkpoint = torch.load(args.base_classifier)
-        base_classifier.load_state_dict(checkpoint['model_param'])
-    elif args.model == 'resnet50':
-        from torchvision.models.resnet import resnet50
-        base_classifier = resnet50(False)
-        base_classifier = copy_pretrained_model(base_classifier, args.base_classifier)
+    if args.model == 'pointnet2':
+        from Pointent2andDGCNN.pointnet2Train import Net
+        from torch_geometric.datasets import ModelNet
+        import torch_geometric.transforms as T
+        from torch_geometric.data import DataLoader
+
+        if args.dataset == 'modelnet40':
+            
+            #dataset and loaders
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet40fp')
+            pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
+            print(path)
+            test_dataset = ModelNet(path, '40', False, transform, pre_transform)
+            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=6)
+
+
+            num_classes = 40
+            #model and optimizer
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            model = Net(num_classes).to(device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+            #loadTrainedModel
+            checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
+            model.load_state_dict(checkpoint['model_param'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+
+    elif args.model == 'dgcnn':
+        from Pointent2andDGCNN.dgcnnTrain import Net
+        from torch_geometric.datasets import ModelNet
+        import torch_geometric.transforms as T
+        from torch_geometric.data import DataLoader
+
+        if args.dataset == 'modelnet40':
+
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet40fp')
+            pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
+            print(path)
+            test_dataset = ModelNet(path, '40', False, transform, pre_transform)
+            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
+                                        num_workers=6)
+
+            num_classes = 40
+            #model and optimizer
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            model = Net(num_classes, k=20).to(device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+
+            #loadTrainedModel
+            checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
+            model.load_state_dict(checkpoint['model_param'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            scheduler.load_state_dict(checkpoint['scheduler'])
     else:
-        raise Exception("Undefined model!")    
+        raise Exception("Undefined model!") 
+
+       
 
     if args.certify_method == 'rotation':
         args.sigma *= math.pi # For rotaions to transform the angles to [0, pi]
