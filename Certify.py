@@ -2,7 +2,7 @@ import argparse
 import os.path as osp
 import torch
 import torch.nn.functional as F
-from deform_smooth import SmoothFlow
+
 from time import time
 import datetime
 import os
@@ -22,11 +22,11 @@ parser.add_argument("--base_classifier_path", type=str, help="path to saved pyto
 parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
-parser.add_argument("--certify_batch_sz", type=int, default=32, help="cetify batch size")
+parser.add_argument("--certify_batch_sz", type=int, default=128, help="cetify batch size")
 parser.add_argument("--skip", type=int, default=1, help="how many examples to skip")
 parser.add_argument("--max", type=int, default=-1, help="stop after this many examples")
 parser.add_argument("--N0", type=int, default=100)
-parser.add_argument("--N", type=int, default=100000, help="number of samples to use")
+parser.add_argument("--N", type=int, default=10000, help="number of samples to use")
 parser.add_argument("--alpha", type=float, default=0.001, help="failure probability")
 parser.add_argument("--chunks", type=int, default=1, help="how many chunks do we cut the test set into")
 parser.add_argument("--num_chunk", type=int, default=0, help="which chunk to certify")
@@ -57,10 +57,11 @@ if __name__ == "__main__":
 
     # load model
     if args.model == 'pointnet2':
-        from Pointent2andDGCNN.pointnet2Train import Net
+        from Pointent2andDGCNN.Trainers.pointnet2Train import Net
         from torch_geometric.datasets import ModelNet
         import torch_geometric.transforms as T
         from torch_geometric.data import DataLoader
+        from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow
 
         if args.dataset == 'modelnet40':
             
@@ -69,25 +70,26 @@ if __name__ == "__main__":
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
             print(path)
             test_dataset = ModelNet(path, '40', False, transform, pre_transform)
-            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=6)
+            test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
 
 
             num_classes = 40
             #model and optimizer
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = Net(num_classes).to(device)
-            optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+            base_classifier = Net(num_classes).to(device)
+            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
 
             #loadTrainedModel
-            checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
-            model.load_state_dict(checkpoint['model_param'])
+            checkpoint = torch.load(args.base_classifier_path)
+            base_classifier.load_state_dict(checkpoint['model_param'])
             optimizer.load_state_dict(checkpoint['optimizer'])
 
     elif args.model == 'dgcnn':
-        from Pointent2andDGCNN.dgcnnTrain import Net
+        from Pointent2andDGCNN.Trainers.dgcnnTrain import Net
         from torch_geometric.datasets import ModelNet
         import torch_geometric.transforms as T
         from torch_geometric.data import DataLoader
+        from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow
 
         if args.dataset == 'modelnet40':
 
@@ -95,19 +97,18 @@ if __name__ == "__main__":
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
             print(path)
             test_dataset = ModelNet(path, '40', False, transform, pre_transform)
-            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
-                                        num_workers=6)
+            test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False,num_workers=0)
 
             num_classes = 40
             #model and optimizer
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = Net(num_classes, k=20).to(device)
-            optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+            base_classifier = Net(num_classes, k=20).to(device)
+            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
             scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 
             #loadTrainedModel
-            checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
-            model.load_state_dict(checkpoint['model_param'])
+            checkpoint = torch.load(args.base_classifier_path)
+            base_classifier.load_state_dict(checkpoint['model_param'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             scheduler.load_state_dict(checkpoint['scheduler'])
     else:
@@ -125,7 +126,7 @@ if __name__ == "__main__":
     print("idx\tlabel\tpredict\tradius\tcorrect\ttime", file=f, flush=True)
 
     # iterate through the dataset
-    dataset = test_loader.dataset
+    dataset = [u for u in test_loader]
 
     interval = len(dataset)//args.chunks
     start_ind = args.num_chunk * interval
@@ -137,8 +138,10 @@ if __name__ == "__main__":
             continue
         if i == args.max:
             break
-
-        (x, label) = dataset[i]
+        
+        #extract one at a time
+        x = dataset[i]
+        label = x.y.item()
 
         before_time = time()
         # certify the prediction of g around x

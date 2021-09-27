@@ -7,17 +7,19 @@ from scipy.stats import norm, binom_test
 import numpy as np
 from math import ceil
 from statsmodels.stats.proportion import proportion_confint
+from scipy.spatial.transform import Rotation
+import copy
 
 
 class SmoothFlow(object):
-    """A smoothed classifier g """
+    """A smoothed classifier g specifically for pointnet2 or dgcnn implementation"""
 
     # to abstain, Smooth returns this int
     ABSTAIN = -1
 
     def __init__(self, base_classifier: torch.nn.Module, num_classes: int, certify_method : str, sigma: float, device='cuda'):
         """
-        :param base_classifier: maps from [batch x channel x height x width] to [batch x num_classes]
+        :param base_classifier: maps from Batch(batch=[1024*batch_sz], pos=[1024*batch_sz, 3], ptr=[batch_sz+1], y=[batch_sz]) to [batch x num_classes]
         :param num_classes:
         :param sigma: the noise level hyperparameter
         """
@@ -47,7 +49,34 @@ class SmoothFlow(object):
         return Iwarp
 
 
-    def _GenImageRotation(self, x, N):
+    def _GenCloudRotation(self, x, N,counter):
+        
+        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma #Uniform between [-sigma, sigma]
+        if counter==0:
+            theta[0] = [0,0,0] #keep the original pointcloud as the first example
+
+
+        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        hardcopy = copy.deepcopy(x)
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+        builder = []
+
+        for i in range(N): # for every new perturbed sample desired
+
+            #rotation applied to point cloud
+            rotationRepresentation: Rotation = Rotation.from_euler('xyz', theta[i])
+            rotationMatrix = rotationRepresentation.as_matrix()
+            rotationMatrix = torch.from_numpy(rotationMatrix.T).float().to(self.device)
+            builder.append(rotationMatrix)
+        
+        allRotations = torch.cat([x.unsqueeze(0) for x in builder])
+        StackedPointcloud = hardcopy.pos.repeat(N,1,1)
+        rotatedPoints = torch.bmm(StackedPointcloud,allRotations)
+        hardcopy.pos = torch.reshape(rotatedPoints,(-1,3))
+        return hardcopy
+        '''
         _, rows, cols = x.shape #Usually in certification, the batch size is 1
         ang = (-2 * torch.rand((N, 1, 1)) + 1) *self.sigma #Uniform between [-sigma, sigma]
         
@@ -61,6 +90,8 @@ class SmoothFlow(object):
         grid = torch.stack((Y,X), axis=3).to(self.device)
         
         return F.grid_sample(x.repeat((N, 1, 1, 1)), grid+randomFlow)
+        '''
+        
 
     def _GenImageTranslation(self, x, N):
         _, rows, cols = x.shape #N is the batch size
@@ -133,7 +164,7 @@ class SmoothFlow(object):
 
             return F.grid_sample(x.repeat((N, 1, 1, 1)), grid + randomFlow)
 
-    def certify(self, x: torch.tensor, n0: int, n: int, alpha: float, batch_size: int) -> tuple((int, float)):
+    def certify(self, x, n0: int, n: int, alpha: float, batch_size: int) -> tuple((int, float)):
         """ Monte Carlo algorithm for certifying that g's prediction around x is constant within some L2 radius.
         With probability at least 1 - alpha, the class returned by this method will equal g(x), and g's prediction will
         robust within a L2 ball of radius R around x.
@@ -161,7 +192,7 @@ class SmoothFlow(object):
             radius = self.sigma * norm.ppf(pABar)
             return cAHat, radius, pABar
 
-    def predict(self, x: torch.tensor, n: int, alpha: float, batch_size: int) -> int:
+    def predict(self, x, n: int, alpha: float, batch_size: int) -> int:
         """ Monte Carlo algorithm for evaluating the prediction of g at x.  With probability at least 1 - alpha, the
         class returned by this method will equal g(x).
         This function uses the hypothesis test described in https://arxiv.org/abs/1610.03944
@@ -182,7 +213,7 @@ class SmoothFlow(object):
         else:
             return top2[0]
 
-    def _sample_noise(self, x: torch.tensor, num: int, batch_size) -> np.ndarray:
+    def _sample_noise(self, x, num: int, batch_size) -> np.ndarray:
         """ Sample the base classifier's prediction under noisy corruptions of the input x.
         :param x: the input [channel x width x height]
         :param num: number of samples to collect
@@ -191,13 +222,13 @@ class SmoothFlow(object):
         """
         with torch.no_grad():
             counts = np.zeros(self.num_classes, dtype=int)
-            for _ in range(ceil(num / batch_size)):
+            for cert_batch_num in range(ceil(num / batch_size)):
                 this_batch_size = min(batch_size, num)
                 num -= this_batch_size
                 if self.certify_method == 'gaussianFull':
                     batch = self._GenDeformGaussian(x, this_batch_size, device='cuda')
                 elif self.certify_method == 'rotation':
-                    batch = self._GenImageRotation(x, this_batch_size)
+                    batch = self._GenCloudRotation(x, this_batch_size,cert_batch_num)
                 elif self.certify_method == 'translation':
                     batch = self._GenImageTranslation(x, this_batch_size)
                 elif self.certify_method == 'affine':
