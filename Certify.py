@@ -2,7 +2,7 @@ import argparse
 import os.path as osp
 import torch
 import torch.nn.functional as F
-
+import csv
 from time import time
 import datetime
 import os
@@ -22,11 +22,11 @@ parser.add_argument("--base_classifier_path", type=str, help="path to saved pyto
 parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
-parser.add_argument("--certify_batch_sz", type=int, default=128, help="cetify batch size")
+parser.add_argument("--certify_batch_sz", type=int, default=200, help="cetify batch size")
 parser.add_argument("--skip", type=int, default=1, help="how many examples to skip")
 parser.add_argument("--max", type=int, default=-1, help="stop after this many examples")
 parser.add_argument("--N0", type=int, default=100)
-parser.add_argument("--N", type=int, default=10000, help="number of samples to use")
+parser.add_argument("--N", type=int, default=1000, help="number of samples to use")
 parser.add_argument("--alpha", type=float, default=0.001, help="failure probability")
 parser.add_argument("--chunks", type=int, default=1, help="how many chunks do we cut the test set into")
 parser.add_argument("--num_chunk", type=int, default=0, help="which chunk to certify")
@@ -41,17 +41,6 @@ if not os.path.exists(args.basedir):
     os.makedirs(args.basedir, exist_ok=True)
 args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.txt')
 
-def copy_pretrained_model(model, path_to_copy_from):
-    checkpoint = torch.load(path_to_copy_from)['model_param']
-    # print(resnet.keys())
-    keys = list(checkpoint.keys())
-    count = 0
-    for key in model.state_dict().keys():
-        model.state_dict()[key].copy_(checkpoint[keys[count]].data)
-        count +=1
-    model = model.to('cuda')
-    print('Pretrained model is loaded successfully')
-    return model
 
 if __name__ == "__main__":
 
@@ -121,9 +110,23 @@ if __name__ == "__main__":
     # create the smooothed classifier g
     smoothed_classifier = SmoothFlow(base_classifier, num_classes, args.certify_method, args.sigma)
 
-    # prepare output file
-    f = open(args.outfile, 'w')
-    print("idx\tlabel\tpredict\tradius\tcorrect\ttime", file=f, flush=True)
+    # prepare output txt and csv files
+    csvoutfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.csv')
+    ftxt = open(args.outfile, 'w')
+    fcsv = open(csvoutfile, 'w')
+
+    # create the csv writer
+    writer = csv.writer(fcsv)
+
+    #print training params
+    d = vars(args)
+    text = ' | '.join([str(key) + ': ' + str(d[key]) for key in d])
+    print(text, file=ftxt)
+    writer.writerow([str(key) + ': ' + str(d[key]) for key in d])
+
+    #print header
+    print("idx\t\tlabel\t\tpredict\t\tradius\t\tcorrect\t\ttime", file=ftxt, flush=True)
+    writer.writerow(["idx","label","predict","radius","correct","time"])
 
     # iterate through the dataset
     dataset = [u for u in test_loader]
@@ -151,9 +154,10 @@ if __name__ == "__main__":
             radius = 2 * args.sigma * (p_A - 0.5)
         after_time = time()
         correct = int(prediction == label)
-        print('Time for certifying one image is', after_time - before_time )
+        print('Time spent certifying pointcloud {} was {} sec \t {}/{} ({:.2}%)'.format(i,after_time - before_time,i,start_ind + interval,100*i/(start_ind + interval)) )
         time_elapsed = str(datetime.timedelta(seconds=(after_time - before_time)))
-        print("{}\t{}\t{}\t{:.3}\t{}\t{}".format(
-            i, label, prediction, radius, correct, time_elapsed), file=f, flush=True)
+        print("{}\t\t{}\t\t{}\t\t{:.3}\t\t{}\t\t{}".format(i, label, prediction, radius, correct, time_elapsed), file=ftxt, flush=True)
+        writer.writerow([i, label, prediction, radius, correct, time_elapsed])
 
-    f.close()
+    ftxt.close()
+    fcsv.close()
