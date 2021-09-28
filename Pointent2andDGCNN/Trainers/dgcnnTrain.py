@@ -10,7 +10,7 @@ import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import DynamicEdgeConv, global_max_pool
 
-from pointnet2Train import MLP
+from Pointent2andDGCNN.Trainers.pointnet2Train import MLP
 
 class Net(torch.nn.Module):
     def __init__(self, out_channels, k=20, aggr='max'):

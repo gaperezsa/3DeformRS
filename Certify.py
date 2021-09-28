@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40']
 model_choices = ['pointnet2','dgcnn']
-certification_method_choices = ['rotation'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+certification_method_choices = ['rotation','translation'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
 
 
 

@@ -50,7 +50,10 @@ class SmoothFlow(object):
 
 
     def _GenCloudRotation(self, x, N,counter):
-        
+        ''' This function returns N rotated versions of the pointcloud x
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+        '''
         theta = (-2 * np.random.rand(N,3) + 1) *self.sigma #Uniform between [-sigma, sigma]
         if counter==0:
             theta[0] = [0,0,0] #keep the original pointcloud as the first example
@@ -76,36 +79,37 @@ class SmoothFlow(object):
         rotatedPoints = torch.bmm(StackedPointcloud,allRotations)
         hardcopy.pos = torch.reshape(rotatedPoints,(-1,3))
         return hardcopy
+        
+    def _GenCloudTranslation(self, x, N,counter):
+        ''' This function returns N trnslated versions of the pointcloud x
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
         '''
-        _, rows, cols = x.shape #Usually in certification, the batch size is 1
-        ang = (-2 * torch.rand((N, 1, 1)) + 1) *self.sigma #Uniform between [-sigma, sigma]
-        
-        #Generating the vector field for rotation. Not that sigma should be sig*pi, where sig is in [0,1]
-        X, Y = torch.meshgrid(torch.linspace(-1,1,rows),torch.linspace(-1,1,cols))
-        X, Y = X.unsqueeze(0), Y.unsqueeze(0)
-        Xv = X*torch.cos(ang)-Y*torch.sin(ang)-X
-        Yv = X*torch.sin(ang)+Y*torch.cos(ang)-Y
-        
-        randomFlow = torch.stack((Yv,Xv), axis=3).to(self.device)
-        grid = torch.stack((Y,X), axis=3).to(self.device)
-        
-        return F.grid_sample(x.repeat((N, 1, 1, 1)), grid+randomFlow)
-        '''
-        
 
-    def _GenImageTranslation(self, x, N):
-        _, rows, cols = x.shape #N is the batch size
+        translations = torch.randn((N, 3))*self.sigma
+        translations = translations.to(self.device)
+        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        hardcopy = copy.deepcopy(x)
+        if counter==0:
+            translations[0] = torch.tensor([0,0,0]).float().to(self.device) #keep the original pointcloud as the first example
 
-        #Generating the vector field for translation.
-        X, Y = torch.meshgrid(torch.linspace(-1,1,rows),torch.linspace(-1,1,cols))
-        X, Y = X.unsqueeze(0), Y.unsqueeze(0)
-        Xv = torch.randn((N, 1, 1))*self.sigma + 0*X
-        Yv = torch.randn((N, 1, 1))*self.sigma + 0*Y
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+        builder = []
+
+        for i in range(N): # for every new perturbed sample desired
+
+            #translation applied to point cloud
+            translationMatrix = translations[i]
+            translationMatrix = translationMatrix.repeat(pointCloudShape,1)
+            builder.append(translationMatrix)
         
-        randomFlow = torch.stack((Yv,Xv), axis=3).to(self.device)
-        grid = torch.stack((Y,X), axis=3).to(self.device)
-        
-        return F.grid_sample(x.repeat((N, 1, 1, 1)), grid+randomFlow)
+        allTranslations = torch.cat([x for x in builder]).float().to(self.device)
+        translatedPoints = hardcopy.pos.repeat(N,1) + allTranslations
+        hardcopy.pos = translatedPoints
+
+        return hardcopy
     
     def _GenImageScalingUniform(self, x, N):
         _, rows, cols = x.shape # N is the batch size
@@ -230,7 +234,7 @@ class SmoothFlow(object):
                 elif self.certify_method == 'rotation':
                     batch = self._GenCloudRotation(x, this_batch_size,cert_batch_num)
                 elif self.certify_method == 'translation':
-                    batch = self._GenImageTranslation(x, this_batch_size)
+                    batch = self._GenCloudTranslation(x, this_batch_size,cert_batch_num)
                 elif self.certify_method == 'affine':
                     batch = self._GenImageAffine(x, this_batch_size)
                 elif self.certify_method == 'scaling_uniform':
