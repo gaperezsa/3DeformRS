@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40']
 model_choices = ['pointnet2','dgcnn']
-certification_method_choices = ['rotation','translation'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+certification_method_choices = ['rotation','translation','shearing','tapering'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
 
 
 
@@ -22,7 +22,7 @@ parser.add_argument("--base_classifier_path", type=str, help="path to saved pyto
 parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
-parser.add_argument("--certify_batch_sz", type=int, default=200, help="cetify batch size")
+parser.add_argument("--certify_batch_sz", type=int, default=150, help="cetify batch size")
 parser.add_argument("--skip", type=int, default=1, help="how many examples to skip")
 parser.add_argument("--max", type=int, default=-1, help="stop after this many examples")
 parser.add_argument("--N0", type=int, default=100)
@@ -36,9 +36,19 @@ args = parser.parse_args()
 
 # full path for output
 args.basedir = os.path.join('output/certify', args.experiment_name)
+
 # Log path: verify existence of output_path dir, or create it
 if not os.path.exists(args.basedir):
     os.makedirs(args.basedir, exist_ok=True)
+if not os.path.exists('output/samples/rotation'):
+    os.makedirs('output/samples/rotation', exist_ok=True)
+if not os.path.exists('output/samples/translation'):
+    os.makedirs('output/samples/translation', exist_ok=True)
+if not os.path.exists('output/samples/shearing'):
+    os.makedirs('output/samples/shearing', exist_ok=True)
+if not os.path.exists('output/samples/tapering'):
+    os.makedirs('output/samples/tapering', exist_ok=True)
+
 args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.txt')
 
 
