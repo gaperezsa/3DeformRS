@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40']
 model_choices = ['pointnet2','dgcnn']
-certification_method_choices = ['rotation','translation','shearing','tapering'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+certification_method_choices = ['rotation','translation','shearing','tapering','twisting'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
 
 
 
@@ -48,6 +48,8 @@ if not os.path.exists('output/samples/shearing'):
     os.makedirs('output/samples/shearing', exist_ok=True)
 if not os.path.exists('output/samples/tapering'):
     os.makedirs('output/samples/tapering', exist_ok=True)
+if not os.path.exists('output/samples/twisting'):
+    os.makedirs('output/samples/twisting', exist_ok=True)
 
 args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.txt')
 
@@ -144,6 +146,9 @@ if __name__ == "__main__":
     interval = len(dataset)//args.chunks
     start_ind = args.num_chunk * interval
 
+    #which pointcloud to take as sample in the output
+    sampleNumber = 1
+    
     for i in range(start_ind, start_ind + interval):
 
         # only certify every args.skip examples, and stop after args.max examples
@@ -152,6 +157,13 @@ if __name__ == "__main__":
         if i == args.max:
             break
         
+        #check if this is the pointcloud to sample
+        if i == sampleNumber:
+            plywrite = True
+        else:
+            plywrite = False
+
+
         #extract one at a time
         x = dataset[i]
         label = x.y.item()
@@ -159,7 +171,7 @@ if __name__ == "__main__":
         before_time = time()
         # certify the prediction of g around x
         x = x.cuda()
-        prediction, radius, p_A = smoothed_classifier.certify(x, args.N0, args.N, args.alpha, args.certify_batch_sz)
+        prediction, radius, p_A = smoothed_classifier.certify(x, args.N0, args.N, args.alpha, args.certify_batch_sz,plywrite)
         if args.uniform:
             radius = 2 * args.sigma * (p_A - 0.5)
         after_time = time()

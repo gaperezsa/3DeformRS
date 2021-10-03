@@ -141,9 +141,15 @@ class SmoothFlow(object):
         hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
         hardcopy.y = hardcopy.y.expand(N)
 
+        #shearing is introducing the coefficients in the last row of the identity matrix and not changing the diagonal
         shearingMatrixs = torch.eye(3).unsqueeze(0).repeat(N,1,1)
         shearingMatrixs[:,2,:2] = shearingCoeff[:,0,:2]
         shearingMatrixs = shearingMatrixs.float().to(self.device)
+
+        '''                     [[1       0       0  ],
+            shearingMatrix =     [0       1       0  ],
+                                 [coefA   CoefB   1  ]]
+        '''
         
         StackedPointcloud = hardcopy.pos.repeat(N,1,1)
         ShearedPoints = torch.bmm(StackedPointcloud,shearingMatrixs)
@@ -180,7 +186,7 @@ class SmoothFlow(object):
         hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
         hardcopy.y = hardcopy.y.expand(N)
 
-        #have all points that are going to be altered for computing the tapering matrix
+        #have all points that are going to be altered , needed in order to compute the tapering matrixs
         hardcopy.pos = hardcopy.pos.repeat(N,1)
 
         #preparing a,b and z to fit with the mask
@@ -197,7 +203,7 @@ class SmoothFlow(object):
         
         '''This gives matrixes that look something like this
 
-            [[0.5*a^2*z+b*z+1],0                 ,0],
+            [[0.5*a^2*z+b*z+1 ,0                 ,0],
              [0               ,0.5*a^2*z+b*z+1   ,0]
              [0               ,0                 ,1]]
         
@@ -207,6 +213,60 @@ class SmoothFlow(object):
         StackedPointcloud = torch.reshape(hardcopy.pos,(N*pointCloudShape,1,3))
         taperedPoints = torch.bmm(StackedPointcloud,TransformationMatrixs)
         hardcopy.pos = torch.reshape(taperedPoints,(-1,3))
+
+        return hardcopy
+
+    def _GenCloudTwisting(self, x, N,counter):
+        ''' This function returns N sheared versions of the pointcloud x
+            shearing will be apllied on the x and y coordinate keeping z coordinate intact
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+        '''
+
+        twistingCoeff = (torch.randn((N,1))*self.sigma).float().to(self.device) #although 3 values generated, the third wont be used
+
+        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+
+        hardcopy = copy.deepcopy(x)
+        if counter==0:
+            twistingCoeff[0] = torch.tensor([0]).float().to(self.device) #keep the original pointcloud as the first example
+
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+        
+
+        #have all points that are going to be altered , needed in order to compute the twisting matrixs
+        hardcopy.pos = hardcopy.pos.repeat(N,1)
+
+        #preparing alpha and z to fit with the mask
+        #same alpha for every 4*amountOfPointPerCloud because 4 positions in the identity matrix are gonna change
+        #same z for every 4 positions (4 position in this mask means a single point in the point cloud
+        z = hardcopy.pos[:, 2].repeat(4,1).T.flatten()
+        alpha = twistingCoeff[:,0].repeat(4*pointCloudShape,1).T.flatten()
+
+        boolMask = torch.tensor([[1,1,0],[1,1,0],[0,0,0]]).bool().repeat(N*pointCloudShape,1,1).to(self.device)
+        TransformationMatrixs = torch.eye(3).repeat(N*pointCloudShape,1,1).to(self.device)
+        angles = torch.mul(alpha,z)
+
+        ''' remember 
+            sin(alpha*z) = cos(alpha*z + pi/2)
+            -sin(alpha*z) = cos(alpha*z - pi/2)
+            
+            meaning
+
+            [[cos(alpha*z)    ,sin(alpha*z)      ,0],              [[cos(alpha*z)       ,cos(alpha*z + pi/2), 0]
+             [-sin(alpha*z)   ,cos(alpha*z)      ,0]        =       [cos(alpha*z - pi/2),cos(alpha*z)       , 0] 
+             [0               ,0                 ,1]]               [0                  ,0                  , 1]]
+            
+            '''
+        transformer = torch.tensor([0,math.pi/2,-math.pi/2,0]).repeat(N*pointCloudShape).float().to(self.device)
+        angles += transformer
+        TransformationMatrixs[boolMask] = torch.cos(angles)
+        
+        StackedPointcloud = torch.reshape(hardcopy.pos,(N*pointCloudShape,1,3))
+        twistedPoints = torch.bmm(StackedPointcloud,TransformationMatrixs)
+        hardcopy.pos = torch.reshape(twistedPoints,(-1,3))
 
         return hardcopy
     
@@ -267,7 +327,7 @@ class SmoothFlow(object):
 
             return F.grid_sample(x.repeat((N, 1, 1, 1)), grid + randomFlow)
 
-    def certify(self, x, n0: int, n: int, alpha: float, batch_size: int) -> tuple((int, float)):
+    def certify(self, x, n0: int, n: int, alpha: float, batch_size: int, plywrite=False) -> tuple((int, float)):
         """ Monte Carlo algorithm for certifying that g's prediction around x is constant within some L2 radius.
         With probability at least 1 - alpha, the class returned by this method will equal g(x), and g's prediction will
         robust within a L2 ball of radius R around x.
@@ -281,11 +341,11 @@ class SmoothFlow(object):
         """
         self.base_classifier.eval()
         # draw samples of f(x+ epsilon)
-        counts_selection = self._sample_noise(x, n0, batch_size)
+        counts_selection = self._sample_noise(x, n0, batch_size,plywrite)
         # use these samples to take a guess at the top class
         cAHat = counts_selection.argmax().item()
         # draw more samples of f(x + epsilon)
-        counts_estimation = self._sample_noise(x, n, batch_size)
+        counts_estimation = self._sample_noise(x, n, batch_size,plywrite)
         # use these samples to estimate a lower bound on pA
         nA = counts_estimation[cAHat].item()
         pABar = self._lower_confidence_bound(nA, n, alpha)
@@ -316,7 +376,7 @@ class SmoothFlow(object):
         else:
             return top2[0]
 
-    def _sample_noise(self, x, num: int, batch_size) -> np.ndarray:
+    def _sample_noise(self, x, num: int, batch_size,plywrite) -> np.ndarray:
         """ Sample the base classifier's prediction under noisy corruptions of the input x.
         :param x: the input (in this case, torch geometric Batch object containing 1 pointcloud )
         :param num: number of samples to collect
@@ -333,7 +393,7 @@ class SmoothFlow(object):
                     batch = self._GenCloudRotation(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
-                    if (not self.plywritten) and this_batch_size > 2:
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
                         PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Original.ply')
                         PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
@@ -344,7 +404,7 @@ class SmoothFlow(object):
                     batch = self._GenCloudTranslation(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
-                    if (not self.plywritten) and this_batch_size > 2:
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
                         PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/translation/'+self.exp_name+'Original.ply')
                         PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
@@ -355,7 +415,7 @@ class SmoothFlow(object):
                     batch = self._GenCloudShearing(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
-                    if (not self.plywritten) and this_batch_size > 2:
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
                         PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/shearing/'+self.exp_name+'Original.ply')
                         PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
@@ -366,11 +426,22 @@ class SmoothFlow(object):
                     batch = self._GenCloudTapering(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
-                    if (not self.plywritten) and this_batch_size > 2:
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
                         PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/tapering/'+self.exp_name+'Original.ply')
                         PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/tapering/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'twisting':
+                    batch = self._GenCloudTwisting(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Original.ply')
+                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
                 else:
