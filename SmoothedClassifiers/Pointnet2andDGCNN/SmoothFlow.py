@@ -270,20 +270,58 @@ class SmoothFlow(object):
 
         return hardcopy
     
-    def _GenImageScalingUniform(self, x, N):
-        _, rows, cols = x.shape # N is the batch size
-        #Scaling here is sampled from uniform distribution between [1-sigma, 1+sigma]
-        scale = (-2 * torch.rand((N, 1, 1)) + 1.0) * self.sigma + 1.0
-        #Generating the vector field for scaling.
-        X, Y = torch.meshgrid(torch.linspace(-1,1,rows),torch.linspace(-1,1,cols))
-        X, Y = X.unsqueeze(0), Y.unsqueeze(0)
-        Xv = X * scale - X
-        Yv = Y * scale - Y
+    def _GenCloudSqueezing(self, x, N,counter):
+        ''' This function returns N squeezed versions of the pointcloud x
+            squeezing will be apllied by stretching the x coordinate and compressing the y and z coordinate accordingly
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+
+            x will be stretched by a factor K, so, Y and Z will be compressed by 1/sqrt(K)
+        '''
+        Kbar =(-2 * np.random.rand(N,1) + 1) *self.sigma #Uniform between [-sigma, sigma]
+
+        stretchingCoeffK = torch.abs(torch.from_numpy(Kbar-1)).float().to(self.device)
+
+        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+
+        hardcopy = copy.deepcopy(x)
+        if counter==0:
+            stretchingCoeffK[0] = torch.tensor([1]).float().to(self.device) #keep the original pointcloud as the first example
+
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+
+
+        #preparing K and z to fit with the mask
+        #same K for every three positions meaning one matrix during mask asignation, one matrix per one point cloud
+        K = stretchingCoeffK[:,0].repeat(3,1).T.flatten()
+        divisor = (1 / torch.mul( stretchingCoeffK[:,0] , torch.sqrt(stretchingCoeffK[:,0]) ) ).repeat(3,1).T
+        divisor[:,0] = 1
+        divisor = divisor.flatten()
+
+        '''K        = [k1              ,k1              ,k1             ,k2             ,k2             ,k2             ,...]
+           divisor  = [1               ,1/k1*sqrt(k1)   ,1/k1*sqrt(k1)  ,1              ,1/k2*sqrt(k2)  ,1/k2*sqrt(k2)  ,...]
         
-        randomFlow = torch.stack((Yv,Xv), axis=3).to(self.device)
-        grid = torch.stack((Y,X), axis=3).to(self.device)
+        '''
+
+        boolMask = torch.tensor([[1,0,0],[0,1,0],[0,0,1]]).bool().repeat(N,1,1).to(self.device)
+        TransformationMatrixs = torch.eye(3).repeat(N,1,1).to(self.device)
+        TransformationMatrixs[boolMask] = torch.mul(K,divisor)
         
-        return F.grid_sample(x.repeat((N, 1, 1, 1)), grid+randomFlow)
+        '''This gives matrixes that look something like this
+
+            [[k               ,0                 ,0         ],
+             [0               ,1/sqrt(k)         ,0         ],
+             [0               ,0                 ,1/sqrt(k)]]
+        
+        '''
+            
+        StackedPointcloud = hardcopy.pos.repeat(N,1,1)
+        squeezedPoints = torch.bmm(StackedPointcloud,TransformationMatrixs)
+        hardcopy.pos = torch.reshape(squeezedPoints,(-1,3))
+
+        return hardcopy
 
     def _GenImageAffine(self, x, N):
         _, rows, cols = x.shape # N is the batch size
@@ -442,6 +480,17 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Original.ply')
                         PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'squeezing':
+                    batch = self._GenCloudSqueezing(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Original.ply')
+                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
                 else:

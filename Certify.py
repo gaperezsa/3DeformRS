@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40']
 model_choices = ['pointnet2','dgcnn']
-certification_method_choices = ['rotation','translation','shearing','tapering','twisting'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
 
 
 
@@ -34,6 +34,10 @@ parser.add_argument('--uniform', action='store_true', default=False, help='certi
 
 args = parser.parse_args()
 
+if args.certify_method == 'squeezing' and (args.sigma > 1 or args.sigma < -1 ):
+    print("certifying for squeezing with sigma : {} is not defined here, setting sigma to 0.999999".format(args.sigma))
+    args.sigma = 0.999999
+
 # full path for output
 args.basedir = os.path.join('output/certify', args.experiment_name)
 
@@ -50,6 +54,8 @@ if not os.path.exists('output/samples/tapering'):
     os.makedirs('output/samples/tapering', exist_ok=True)
 if not os.path.exists('output/samples/twisting'):
     os.makedirs('output/samples/twisting', exist_ok=True)
+if not os.path.exists('output/samples/squeezing'):
+    os.makedirs('output/samples/squeezing', exist_ok=True)
 
 args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.txt')
 
@@ -147,9 +153,9 @@ if __name__ == "__main__":
     start_ind = args.num_chunk * interval
 
     #which pointcloud to take as sample in the output
-    sampleNumber = 1
+    sampleNumber = 120
     
-    for i in range(start_ind, start_ind + interval):
+    for i in range(start_ind+119, start_ind + interval):
 
         # only certify every args.skip examples, and stop after args.max examples
         if i % args.skip != 0:
