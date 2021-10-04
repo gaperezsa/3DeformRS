@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40']
 model_choices = ['pointnet2','dgcnn']
-certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise','affine'] 
 
 
 
@@ -59,6 +59,8 @@ if not os.path.exists('output/samples/twisting'):
     os.makedirs('output/samples/twisting', exist_ok=True)
 if not os.path.exists('output/samples/squeezing'):
     os.makedirs('output/samples/squeezing', exist_ok=True)
+if not os.path.exists('output/samples/affine'):
+    os.makedirs('output/samples/affine', exist_ok=True)
 
 args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.txt')
 

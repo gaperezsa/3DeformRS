@@ -80,6 +80,7 @@ class SmoothFlow(object):
         hardcopy.y = hardcopy.y.expand(N)
         builder = []
 
+        '''
         for i in range(N): # for every new perturbed sample desired
 
             #rotation that will be applied to point cloud
@@ -87,6 +88,11 @@ class SmoothFlow(object):
             rotationMatrix = rotationRepresentation.as_matrix()
             rotationMatrix = torch.from_numpy(rotationMatrix.T).float().to(self.device)
             builder.append(rotationMatrix)
+        '''
+
+        #faster implementation, same idea
+        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix().T).float().to(self.device) for angle in theta]
+
         
         #apply rotation and return
         allRotations = torch.cat([x.unsqueeze(0) for x in builder])
@@ -342,21 +348,55 @@ class SmoothFlow(object):
 
         return hardcopy
 
-    def _GenImageAffine(self, x, N):
-        _, rows, cols = x.shape # N is the batch size
-        
-        params = torch.randn((6, N, 1, 1))*self.sigma
+    def _GenCloudAffine(self, x, N,counter):
+        ''' This function returns N affine transformed versions of the pointcloud x
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
 
-        #Generating the vector field for Affine transformation.
-        X, Y = torch.meshgrid(torch.linspace(-1,1,rows),torch.linspace(-1,1,cols))
-        X, Y = X.unsqueeze(0), Y.unsqueeze(0)
-        Xv = params[0]*X + params[1]*Y + params[2]
-        Yv = params[3]*X + params[4]*Y + params[5]
+        '''
+        affineCoeffs = (torch.randn((N,4,3))*self.sigma).float().to(self.device) #Uniform between [-sigma, sigma]
+
+        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+
+        hardcopy = copy.deepcopy(x)
+
+        if counter==0:
+            affineCoeffs[0] = torch.tensor([[1,0,0],[0,1,0],[0,0,1],[0,0,0]]).float().to(self.device) #keep the original pointcloud as the first example
+
+        '''This gives affineCoeffs that look something like this
+
+            [[a               ,e                 ,i         ],
+             [b               ,f                 ,j         ],
+             [c               ,g                 ,k         ],
+             [d               ,h                 ,l         ]]
         
-        randomFlow = torch.stack((Yv,Xv), axis=3).to(self.device)
-        grid = torch.stack((Y,X), axis=3).to(self.device)
+        '''
+
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+
+
         
-        return F.grid_sample(x.repeat((N, 1, 1, 1)), grid+randomFlow)
+        StackedPointcloud = torch.cat((hardcopy.pos,torch.ones(pointCloudShape).unsqueeze(0).T.float().to(self.device)),1)
+
+        '''This gives StackedPointcloud that look something like this
+
+            [[x1               ,y1                 ,z1                  ,1      ],
+             [x2               ,y2                 ,z2                  ,1      ],
+             [x3               ,y3                 ,z3                  ,1      ],
+             [x4               ,y4                 ,z4                  ,1      ],
+             ... 
+             xpointCloudShape  ,ypointCloudShape,  ,zpointCloudShape    ,1      ]]
+        
+        '''
+
+        StackedPointcloud = StackedPointcloud.repeat(N,1,1)
+        affinePoints = torch.bmm(StackedPointcloud,affineCoeffs)
+        hardcopy.pos = torch.reshape(affinePoints,(-1,3))
+
+        return hardcopy
 
 
     def certify(self, x, n0: int, n: int, alpha: float, batch_size: int, plywrite=False) -> tuple((int, float)):
@@ -497,6 +537,17 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Original.ply')
                         PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
                         write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'affine':
+                    batch = self._GenCloudAffine (x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/affine/'+self.exp_name+'Original.ply')
+                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/affine/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
                 else:
