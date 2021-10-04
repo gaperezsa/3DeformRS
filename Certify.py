@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40']
 model_choices = ['pointnet2','dgcnn']
-certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
+certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise'] #'nominal', 'gaussianFull', 'rotation', 'translation', 'affine', 'scaling_uniform' ,'DCT'
 
 
 
@@ -34,6 +34,7 @@ parser.add_argument('--uniform', action='store_true', default=False, help='certi
 
 args = parser.parse_args()
 
+#squeezing only defined for -1 < sigma < 1
 if args.certify_method == 'squeezing' and (args.sigma > 1 or args.sigma < -1 ):
     print("certifying for squeezing with sigma : {} is not defined here, setting sigma to 0.999999".format(args.sigma))
     args.sigma = 0.999999
@@ -44,6 +45,8 @@ args.basedir = os.path.join('output/certify', args.experiment_name)
 # Log path: verify existence of output_path dir, or create it
 if not os.path.exists(args.basedir):
     os.makedirs(args.basedir, exist_ok=True)
+if not os.path.exists('output/samples/gaussianNoise'):
+    os.makedirs('output/samples/gaussianNoise', exist_ok=True)
 if not os.path.exists('output/samples/rotation'):
     os.makedirs('output/samples/rotation', exist_ok=True)
 if not os.path.exists('output/samples/translation'):
@@ -153,9 +156,9 @@ if __name__ == "__main__":
     start_ind = args.num_chunk * interval
 
     #which pointcloud to take as sample in the output
-    sampleNumber = 120
+    sampleNumber = 0
     
-    for i in range(start_ind+119, start_ind + interval):
+    for i in range(start_ind, start_ind + interval):
 
         # only certify every args.skip examples, and stop after args.max examples
         if i % args.skip != 0:

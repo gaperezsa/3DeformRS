@@ -33,29 +33,40 @@ class SmoothFlow(object):
         self.plywritten = False
         self.num_bases = 2
 
-    def _GenDeformGaussian(self, imgs, N, device):
-        ''' This function takes an image C x W x H and returns N Gaussianly perturbed coordinates versions
-        '''       
-        batch = imgs.repeat((N, 1, 1, 1))
-        num_channels, rows, cols = imgs.shape
-        randomFlow = torch.randn(N, rows, cols, 2, device=device) * self.sigma
+    def _GenCloudGaussianNoise(self, x, N,counter):
+        ''' This function returns N gaussian noised versions of the pointcloud x...
+            meaning, every point will be randomy translated by some vector, l2 norm of said vector will be the certified radius.
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+        '''
 
-        new_ros = torch.linspace(-1, 1, rows)
-        new_cols = torch.linspace(-1, 1, cols)
+        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
 
-        meshx, meshy = torch.meshgrid((new_ros, new_cols))
-        grid = torch.stack((meshy, meshx), 2).unsqueeze(0).expand(N, rows, cols, 2).to(device)
+        gaussianNoise = (torch.randn((N*pointCloudShape,1,3))*self.sigma).float().to(self.device) #Gaussian distribution for values of vector with std deviation sigma
 
-        new_grid = grid + randomFlow
+        hardcopy = copy.deepcopy(x)
+        if counter==0:
+            gaussianNoise[0:pointCloudShape] = torch.tensor([[0,0,0]]).repeat(pointCloudShape,1,1).float().to(self.device) #keep the original pointcloud as the first example
 
-        Iwarp = F.grid_sample(batch, new_grid)
-        return Iwarp
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+
+        StackedPointcloud = hardcopy.pos.repeat(N,1)
+        StackedPointcloud = torch.reshape(StackedPointcloud,((N*pointCloudShape,1,3)))
+        noisyPoints = StackedPointcloud + gaussianNoise
+        hardcopy.pos = torch.reshape(noisyPoints,(-1,3))
+        
+
+        return hardcopy
 
 
     def _GenCloudRotation(self, x, N,counter):
         ''' This function returns N rotated versions of the pointcloud x
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
         '''
         theta = (-2 * np.random.rand(N,3) + 1) *self.sigma #Uniform between [-sigma, sigma]
         if counter==0:
@@ -90,6 +101,7 @@ class SmoothFlow(object):
         ''' This function returns N translated versions of the pointcloud x
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
         '''
 
         translations = torch.randn((N, 3))*self.sigma
@@ -127,6 +139,7 @@ class SmoothFlow(object):
             shearing will be apllied on the x and y coordinate keeping z coordinate intact
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
         '''
 
         shearingCoeff = torch.randn((N,1,3))*self.sigma #although 3 values generated, the third wont be used
@@ -164,6 +177,7 @@ class SmoothFlow(object):
             tapering will be apllied on the x and y coordinate keeping z coordinate intact
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
 
 
             in particular, for tapering, the trick will be having one transformation PER POINT rather than per pointcloud.
@@ -221,6 +235,10 @@ class SmoothFlow(object):
             shearing will be apllied on the x and y coordinate keeping z coordinate intact
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+
+            in particular, for twisting, the trick will be having one transformation PER POINT rather than per pointcloud.
+            this is because the twisting applied in the 3d Certify paper was a function of each Z coordinate of each point.
         '''
 
         twistingCoeff = (torch.randn((N,1))*self.sigma).float().to(self.device) #although 3 values generated, the third wont be used
@@ -275,6 +293,7 @@ class SmoothFlow(object):
             squeezing will be apllied by stretching the x coordinate and compressing the y and z coordinate accordingly
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
 
             x will be stretched by a factor K, so, Y and Z will be compressed by 1/sqrt(K)
         '''
@@ -339,31 +358,6 @@ class SmoothFlow(object):
         
         return F.grid_sample(x.repeat((N, 1, 1, 1)), grid+randomFlow)
 
-    def _GenImageDCT(self, x, N):
-
-            _, rows, cols = x.shape
-            new_ros = torch.linspace(-1, 1, rows)
-            new_cols = torch.linspace(-1, 1, cols)
-            meshx, meshy = torch.meshgrid((new_ros, new_cols))
-            grid = torch.stack((meshy, meshx), 2).unsqueeze(0).expand(N, rows, cols, 2).to(self.device)
-
-            X, Y = torch.meshgrid((new_ros, new_cols))
-            X = torch.reshape(X, (1, 1, 1, rows, cols))
-            Y = torch.reshape(Y, (1, 1, 1, rows, cols))
-
-            param_ab = torch.randn(N, self.num_bases, self.num_bases, 1, 2) * self.sigma
-            a = param_ab[:, :, :, :, 0].unsqueeze(4)
-            b = param_ab[:, :, :, :, 1].unsqueeze(4)
-            K1 = torch.arange(self.num_bases).view(1, self.num_bases, 1, 1, 1)
-            K2 = torch.arange(self.num_bases).view(1, 1, self.num_bases, 1, 1)
-            basis_factors  = torch.cos( math.pi* (K1 * (X+0.5/rows) ))*torch.cos( math.pi * (K2 * (Y+0.5/cols)))
-
-            U = torch.squeeze(torch.sum(a * basis_factors, dim=(1, 2)))
-            V = torch.squeeze(torch.sum(b * basis_factors, dim=(1, 2)))
-
-            randomFlow = torch.stack((V, U), dim=3).to(self.device)
-
-            return F.grid_sample(x.repeat((N, 1, 1, 1)), grid + randomFlow)
 
     def certify(self, x, n0: int, n: int, alpha: float, batch_size: int, plywrite=False) -> tuple((int, float)):
         """ Monte Carlo algorithm for certifying that g's prediction around x is constant within some L2 radius.
@@ -427,7 +421,19 @@ class SmoothFlow(object):
             for cert_batch_num in range(ceil(num / batch_size)):
                 this_batch_size = min(batch_size, num)
                 num -= this_batch_size
-                if self.certify_method == 'rotation':
+
+                if self.certify_method == 'gaussianNoise':
+                    batch = self._GenCloudGaussianNoise(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Original.ply')
+                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'rotation':
                     batch = self._GenCloudRotation(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
