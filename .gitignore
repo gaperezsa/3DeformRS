@@ -134,6 +134,7 @@ dmypy.json
 Data/
 output/
 tensorboard/
-Pointent2&DGCNN/Data/
-Pointent2&DGCNN/output/
-Pointent2&DGCNN/tensorboard/
+
+Pointent2andDGCNN/Data/
+Pointent2andDGCNN/output/
+Pointent2andDGCNN/tensorboard/
