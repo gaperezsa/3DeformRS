@@ -11,22 +11,36 @@ from torch_geometric.data import DataLoader
 from torch_geometric.nn import PointConv, fps, radius, global_max_pool
 import dgcnnTrain
 
-
+dataset_choices = ['modelnet40','modelnet10']
 
 #arguments passed
 parser = ArgumentParser(description='PyTorch code for GeoCer')
 parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
+parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
 args = parser.parse_args()
 
 
 #dataset and loaders
-path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
-                'Data/Modelnet40fp')
-pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
-print(path)
-test_dataset = ModelNet(path, '40', False, transform, pre_transform)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
-                            num_workers=6)
+if args.dataset == 'modelnet40':
+    
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
+                    'Data/Modelnet40fp')
+    pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
+    print(path)
+    test_dataset = ModelNet(path, '40', False, transform, pre_transform)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
+                                num_workers=6)
+
+elif args.dataset == 'modelnet10':
+    
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
+                    'Data/Modelnet10fp')
+    pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
+    print(path)
+    test_dataset = ModelNet(path, '10', False, transform, pre_transform)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
+                                num_workers=6)
+
 
 #model and optimizer
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
