@@ -10,7 +10,7 @@ import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import DynamicEdgeConv, global_max_pool
 
-from pointnet2Train import MLP
+from Pointent2andDGCNN.Trainers.pointnet2Train import MLP
 
 class Net(torch.nn.Module):
     def __init__(self, out_channels, k=20, aggr='max'):
@@ -178,7 +178,7 @@ if __name__ == '__main__':
         print('Epoch {:03d}, Loss: {:.4f}, Test: {:.4f}'.format(
             epoch, loss, test_acc))
         scheduler.step()
-        if test_acc > bestTestAcc:
+        if test_acc >= bestTestAcc:
             torch.save(
                         {
                             'epoch': epoch + 1,

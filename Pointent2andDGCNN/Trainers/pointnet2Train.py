@@ -214,7 +214,7 @@ if __name__ == '__main__':
         train(epoch)
         test_acc = test(test_loader)
         print('Epoch: {:03d}, Test: {:.4f}'.format(epoch, test_acc))
-        if test_acc > bestTestAcc:
+        if test_acc >= bestTestAcc:
             torch.save(
                         {
                             'epoch': epoch + 1,

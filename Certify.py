@@ -9,7 +9,7 @@ import os
 import math
 from torchvision.models.resnet import resnet50
 
-dataset_choices = ['modelnet40']
+dataset_choices = ['modelnet40','modelnet10']
 model_choices = ['pointnet2','dgcnn']
 certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise','affine'] 
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
             test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
 
 
-            num_classes = 40
+            num_classes = 10
             #model and optimizer
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             base_classifier = Net(num_classes).to(device)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
             test_dataset = ModelNet(path, '10', False, transform, pre_transform)
             test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False,num_workers=0)
 
-            num_classes = 40
+            num_classes = 10
             #model and optimizer
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             base_classifier = Net(num_classes, k=20).to(device)

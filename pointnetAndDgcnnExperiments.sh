@@ -1,7 +1,7 @@
 #!/bin/bash
 valid=true
 count=1
-sigma=0.05
+sigma=.3
 while [ $valid ]
 do
 echo $count
@@ -18,7 +18,7 @@ echo dgcnnTapering0$sigma
 CUDA_VISIBLE_DEVICES=1 python3 Certify.py --model dgcnn --base_classifier_path Pointent2andDGCNN/output/train/dgcnnBaseline/FinalModel.pth.tar --sigma $sigma --certify_method tapering --experiment_name dgcnnTapering0$sigma
 
 
-if [ $count -eq 20 ];
+if [ $count -eq 5 ];
 then
 break
 fi
