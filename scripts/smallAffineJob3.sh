@@ -1,13 +1,13 @@
 #!/bin/sh
-#SBATCH --job-name=taperingMissing
-#SBATCH --time=0-2:00:00
+#SBATCH --job-name=affine3
+#SBATCH --time=0-3:00:00
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=40GB
 #SBATCH --gres=gpu:1
 #SBATCH --chdir=/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/
 #SBATCH -o logs/%x_%A_%a.out
 #SBATCH -e logs/%x_%A_%a.err
-#SBATCH --array=1-8
+#SBATCH --array=13-18
 #SBATCH --constraint=v100
 ##SBATCH --account=conf-cvpr-2021.11.23-ghanembs
 
@@ -28,5 +28,5 @@ set -ex
 
 # ------------------------ need not change -----------------------------------
 
-LINE=$(sed -n "$((SLURM_ARRAY_TASK_ID))"p scripts/TaperingMissing.txt)
+LINE=$(sed -n "$((SLURM_ARRAY_TASK_ID))"p scripts/smallAffine.txt)
 python3 Certify.py  $LINE 

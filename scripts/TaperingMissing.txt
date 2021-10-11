@@ -1,0 +1,3 @@
+  --model dgcnn --dataset modelnet40 --base_classifier_path Pointent2andDGCNN/output/train/dgcnnBaseline/FinalModel.pth.tar --sigma 0.15 --certify_method  tapering --experiment_name dgcnn2Tapering0.15
+  --model dgcnn --dataset modelnet40 --base_classifier_path Pointent2andDGCNN/output/train/dgcnnBaseline/FinalModel.pth.tar --sigma 0.2 --certify_method  tapering --experiment_name dgcnn2Tapering0.20
+  --model dgcnn --dataset modelnet40 --base_classifier_path Pointent2andDGCNN/output/train/dgcnnBaseline/FinalModel.pth.tar --sigma 0.25 --certify_method  tapering --experiment_name dgcnn2Tapering0.25

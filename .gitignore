@@ -135,6 +135,7 @@ Data/
 output/
 tensorboard/
 Analysis/
+logs/
 
 Pointent2andDGCNN/Data/
 Pointent2andDGCNN/output/
