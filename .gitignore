@@ -135,6 +135,10 @@ Data/
 output/
 tensorboard/
 Analysis/
+<<<<<<< HEAD
+=======
+logs/
+>>>>>>> 5554e9a3bf5325aabe98782c599f9082586d702e
 
 Pointent2andDGCNN/Data/
 Pointent2andDGCNN/output/

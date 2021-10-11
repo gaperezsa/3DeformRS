@@ -97,8 +97,11 @@ def print_to_log(text, txt_file_path):
 
 if __name__ == '__main__':
 
+    dataset_choices = ['modelnet40','modelnet10']
+    
     #arguments passed
     parser = ArgumentParser(description='PyTorch code for GeoCer')
+    parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
     parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train (default: 200)')
     args = parser.parse_args()
@@ -127,17 +130,29 @@ if __name__ == '__main__':
     print_training_params(args, info_log)
 
     
-    #dataset and loaders
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
-                    'Data/Modelnet40fp')
-    pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
-    train_dataset = ModelNet(path, '40', True, transform, pre_transform)
-    test_dataset = ModelNet(path, '40', False, transform, pre_transform)
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True,
-                            num_workers=6)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False,
-                            num_workers=6)
+    if args.dataset == 'modelnet40':
+        #dataset and loaders
+        path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
+                        'Data/Modelnet40fp')
+        pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
+        train_dataset = ModelNet(path, '40', True, transform, pre_transform)
+        test_dataset = ModelNet(path, '40', False, transform, pre_transform)
+        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True,
+                                num_workers=6)
+        test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False,
+                                num_workers=6)
 
+    elif args.dataset == 'modelnet10':
+        #dataset and loaders
+        path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
+                        'Data/Modelnet10fp')
+        pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
+        train_dataset = ModelNet(path, '10', True, transform, pre_transform)
+        test_dataset = ModelNet(path, '10', False, transform, pre_transform)
+        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True,
+                                num_workers=6)
+        test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False,
+                                num_workers=6)
 
     #model and optimizer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -145,6 +160,17 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 
+    try:
+        #loadTrainedModel
+        checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
+        model.load_state_dict(checkpoint['model_param'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
+    except:
+        print('no pretrained model found')
+
+
+    bestTestAcc = -1 
     #train and test
     for epoch in range(1, args.epochs):
         loss = train(epoch)
@@ -152,10 +178,13 @@ if __name__ == '__main__':
         print('Epoch {:03d}, Loss: {:.4f}, Test: {:.4f}'.format(
             epoch, loss, test_acc))
         scheduler.step()
-    torch.save(
-                {
-                    'epoch': epoch + 1,
-                    'model_param': model.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'scheduler': scheduler.state_dict(),
-                }, f'{output_path}/FinalModel.pth.tar')
+        if test_acc >= bestTestAcc:
+            torch.save(
+                        {
+                            'epoch': epoch + 1,
+                            'model_param': model.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'scheduler': scheduler.state_dict(),
+                        }, f'{output_path}/FinalModel.pth.tar')
+            bestTestAcc = test_acc
+        

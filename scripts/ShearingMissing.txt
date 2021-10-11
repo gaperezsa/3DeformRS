@@ -1,0 +1,3 @@
+  --model pointnet2 --dataset modelnet10 --base_classifier_path Pointent2andDGCNN/output/train/modelnet10pointnetbaseline/FinalModel.pth.tar --sigma 0.25 --certify_method shearing --experiment_name pointnet2ShearingModelnet10_0.25
+  --model pointnet2 --dataset modelnet10 --base_classifier_path Pointent2andDGCNN/output/train/modelnet10pointnetbaseline/FinalModel.pth.tar --sigma 0.3 --certify_method shearing --experiment_name pointnet2ShearingModelnet10_0.30
+  --model pointnet2 --dataset modelnet10 --base_classifier_path Pointent2andDGCNN/output/train/modelnet10pointnetbaseline/FinalModel.pth.tar --sigma 0.35 --certify_method shearing --experiment_name pointnet2ShearingModelnet10_0.35

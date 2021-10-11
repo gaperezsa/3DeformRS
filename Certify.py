@@ -9,7 +9,7 @@ import os
 import math
 from torchvision.models.resnet import resnet50
 
-dataset_choices = ['modelnet40']
+dataset_choices = ['modelnet40','modelnet10']
 model_choices = ['pointnet2','dgcnn']
 certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise','affine'] 
 
@@ -96,6 +96,27 @@ if __name__ == "__main__":
             base_classifier.load_state_dict(checkpoint['model_param'])
             optimizer.load_state_dict(checkpoint['optimizer'])
 
+        elif args.dataset == 'modelnet10':
+            
+            #dataset and loaders
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet10fp')
+            pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
+            print(path)
+            test_dataset = ModelNet(path, '10', False, transform, pre_transform)
+            test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
+
+
+            num_classes = 10
+            #model and optimizer
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            base_classifier = Net(num_classes).to(device)
+            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
+
+            #loadTrainedModel
+            checkpoint = torch.load(args.base_classifier_path)
+            base_classifier.load_state_dict(checkpoint['model_param'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+
     elif args.model == 'dgcnn':
         from Pointent2andDGCNN.Trainers.dgcnnTrain import Net
         from torch_geometric.datasets import ModelNet
@@ -112,6 +133,27 @@ if __name__ == "__main__":
             test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False,num_workers=0)
 
             num_classes = 40
+            #model and optimizer
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            base_classifier = Net(num_classes, k=20).to(device)
+            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+
+            #loadTrainedModel
+            checkpoint = torch.load(args.base_classifier_path)
+            base_classifier.load_state_dict(checkpoint['model_param'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            scheduler.load_state_dict(checkpoint['scheduler'])
+
+        elif args.dataset == 'modelnet10':
+
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet10fp')
+            pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
+            print(path)
+            test_dataset = ModelNet(path, '10', False, transform, pre_transform)
+            test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False,num_workers=0)
+
+            num_classes = 10
             #model and optimizer
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             base_classifier = Net(num_classes, k=20).to(device)
