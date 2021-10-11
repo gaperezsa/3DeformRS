@@ -140,3 +140,5 @@ logs/
 Pointent2andDGCNN/Data/
 Pointent2andDGCNN/output/
 Pointent2andDGCNN/tensorboard/
+
+CurveNet/data
