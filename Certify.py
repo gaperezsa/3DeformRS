@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import os.path as osp
 import torch
@@ -10,7 +11,7 @@ import math
 from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40','modelnet10']
-model_choices = ['pointnet2','dgcnn']
+model_choices = ['pointnet2','dgcnn','curvenet']
 certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise','affine'] 
 
 
@@ -18,6 +19,7 @@ certification_method_choices = ['rotation','translation','shearing','tapering','
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
 parser.add_argument("--model", type=str, choices=model_choices, help="model name")
+parser.add_argument('--num_points', type=int, default=1024,help='num of points to use in case of curvenet, default 1024 recommended')
 parser.add_argument("--base_classifier_path", type=str, help="path to saved pytorch model of base classifier")
 parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
@@ -67,6 +69,9 @@ args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_ch
 
 if __name__ == "__main__":
 
+    #use cuda if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     # load model
     if args.model == 'pointnet2':
         from Pointent2andDGCNN.Trainers.pointnet2Train import Net
@@ -87,7 +92,6 @@ if __name__ == "__main__":
 
             num_classes = 40
             #model and optimizer
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             base_classifier = Net(num_classes).to(device)
             optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
 
@@ -107,8 +111,7 @@ if __name__ == "__main__":
 
 
             num_classes = 10
-            #model and optimizer
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            #model and optimizer           
             base_classifier = Net(num_classes).to(device)
             optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
 
@@ -134,7 +137,6 @@ if __name__ == "__main__":
 
             num_classes = 40
             #model and optimizer
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             base_classifier = Net(num_classes, k=20).to(device)
             optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
             scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
@@ -155,7 +157,6 @@ if __name__ == "__main__":
 
             num_classes = 10
             #model and optimizer
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             base_classifier = Net(num_classes, k=20).to(device)
             optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
             scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
@@ -165,6 +166,36 @@ if __name__ == "__main__":
             base_classifier.load_state_dict(checkpoint['model_param'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             scheduler.load_state_dict(checkpoint['scheduler'])
+    
+    elif args.model == 'curvenet':
+        
+        import torch
+        import torch.nn as nn
+        import torch.nn.functional as F
+        import torch.optim as optim
+        from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
+        from CurveNet.core.data import ModelNet40
+        from CurveNet.core.models.curvenet_cls import CurveNet
+        import numpy as np
+        from torch.utils.data import DataLoader
+        from CurveNet.core.util import cal_loss, IOStream
+        import sklearn.metrics as metrics
+        from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow
+
+        if args.dataset == 'modelnet40':
+
+            test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),batch_size=1, shuffle=False, drop_last=False)
+
+            #num_classes = 40
+
+            #declare and load pretrained model
+            base_classifier = CurveNet().to(device)
+            base_classifier = nn.DataParallel(base_classifier)
+            base_classifier.load_state_dict(torch.load(args.base_classifier_path))
+
+        elif args.dataset == 'modelnet10':
+            raise NotImplementedError
+        
     else:
         raise Exception("Undefined model!") 
 

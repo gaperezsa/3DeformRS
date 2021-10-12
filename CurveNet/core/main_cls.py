@@ -209,9 +209,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     seed = np.random.randint(1, 10000)
-
-    print('current epoch to play out : {}'.format(args.epochs))
-
+    
     _init_()
 
     if args.eval:
