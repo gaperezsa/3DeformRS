@@ -41,24 +41,21 @@ class SmoothFlow(object):
             counter: int just to cehck if the original pointcloud should be conserved
         '''
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
 
-        gaussianNoise = (torch.randn((N*pointCloudShape,1,3))*self.sigma).float().to(self.device) #Gaussian distribution for values of vector with std deviation sigma
+        gaussianNoise = (torch.randn((N,pointCloudShape,3))*self.sigma).float().to(self.device) #Gaussian distribution for values of vector with std deviation sigma
 
-        hardcopy = copy.deepcopy(x)
         if counter==0:
-            gaussianNoise[0:pointCloudShape] = torch.tensor([[0,0,0]]).repeat(pointCloudShape,1,1).float().to(self.device) #keep the original pointcloud as the first example
+            gaussianNoise[0] = torch.tensor([[0,0,0]]).repeat(pointCloudShape,1).float().to(self.device) #keep the original pointcloud as the first example
+        hardcopy = copy.deepcopy(x)
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        #expand labels
+        hardcopy[1] = hardcopy[1].expand((N,1))
 
-        StackedPointcloud = hardcopy.pos.repeat(N,1)
-        StackedPointcloud = torch.reshape(StackedPointcloud,((N*pointCloudShape,1,3)))
-        noisyPoints = StackedPointcloud + gaussianNoise
-        hardcopy.pos = torch.reshape(noisyPoints,(-1,3))
+        #apply Gaussian noise to pointclouds
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+        hardcopy[0] += gaussianNoise
         
-
         return hardcopy
 
 
@@ -73,11 +70,10 @@ class SmoothFlow(object):
             theta[0] = [0,0,0] #keep the original pointcloud as the first example
 
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
         hardcopy = copy.deepcopy(x)
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        
+        hardcopy[1] = hardcopy[1].expand((N,1))
         builder = []
 
         '''
@@ -96,9 +92,9 @@ class SmoothFlow(object):
         
         #apply rotation and return
         allRotations = torch.cat([x.unsqueeze(0) for x in builder])
-        StackedPointcloud = hardcopy.pos.repeat(N,1,1)
-        rotatedPoints = torch.bmm(StackedPointcloud,allRotations)
-        hardcopy.pos = torch.reshape(rotatedPoints,(-1,3))
+        StackedPointcloud = hardcopy[0].repeat(N,1,1)
+        hardcopy[0] = torch.bmm(StackedPointcloud,allRotations)
+        
         
 
         return hardcopy
@@ -112,14 +108,13 @@ class SmoothFlow(object):
 
         translations = torch.randn((N, 3))*self.sigma
         translations = translations.to(self.device)
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
         hardcopy = copy.deepcopy(x)
         if counter==0:
             translations[0] = torch.tensor([0,0,0]).float().to(self.device) #keep the original pointcloud as the first example
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
         builder = []
 
         '''
@@ -133,8 +128,8 @@ class SmoothFlow(object):
         
         #apply translation and return
         allTranslations = torch.cat([x for x in builder]).float().to(self.device)
-        translatedPoints = hardcopy.pos.repeat(N,1) + allTranslations
-        hardcopy.pos = translatedPoints
+        allTranslations = torch.reshape(allTranslations,(-1,pointCloudShape,3))
+        hardcopy[0] = hardcopy[0].repeat(N,1,1) + allTranslations
         
 
         return hardcopy
@@ -150,15 +145,14 @@ class SmoothFlow(object):
 
         shearingCoeff = torch.randn((N,1,3))*self.sigma #although 3 values generated, the third wont be used
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
 
         hardcopy = copy.deepcopy(x)
         if counter==0:
             shearingCoeff[0] = torch.tensor([[0,0,0]]).float().to(self.device) #keep the original pointcloud as the first example
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        
+        x[1] = x[1].expand((N,1))
 
         #shearing is introducing the coefficients in the last row of the identity matrix and not changing the diagonal
         shearingMatrixs = torch.eye(3).unsqueeze(0).repeat(N,1,1)
@@ -196,15 +190,14 @@ class SmoothFlow(object):
 
         TaperingCoeff = (torch.randn((N, 2))*self.sigma).to(self.device)
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
 
         hardcopy = copy.deepcopy(x)
         if counter==0:
             TaperingCoeff[0] = torch.tensor([0,0]).float().to(self.device) #keep the original pointcloud as the first example
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        
+        x[1] = x[1].expand((N,1))
 
         #have all points that are going to be altered , needed in order to compute the tapering matrixs
         hardcopy.pos = hardcopy.pos.repeat(N,1)
@@ -249,15 +242,14 @@ class SmoothFlow(object):
 
         twistingCoeff = (torch.randn((N,1))*self.sigma).float().to(self.device) #although 3 values generated, the third wont be used
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
 
         hardcopy = copy.deepcopy(x)
         if counter==0:
             twistingCoeff[0] = torch.tensor([0]).float().to(self.device) #keep the original pointcloud as the first example
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        
+        x[1] = x[1].expand((N,1))
         
 
         #have all points that are going to be altered , needed in order to compute the twisting matrixs
@@ -307,15 +299,14 @@ class SmoothFlow(object):
 
         stretchingCoeffK = torch.abs(torch.from_numpy(Kbar-1)).float().to(self.device)
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
 
         hardcopy = copy.deepcopy(x)
         if counter==0:
             stretchingCoeffK[0] = torch.tensor([1]).float().to(self.device) #keep the original pointcloud as the first example
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        
+        x[1] = x[1].expand((N,1))
 
 
         #preparing K and z to fit with the mask
@@ -357,7 +348,7 @@ class SmoothFlow(object):
         '''
         affineCoeffs = (torch.randn((N,4,3))*self.sigma).float().to(self.device) #Uniform between [-sigma, sigma]
 
-        pointCloudShape = x.pos.shape[0] #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
 
         hardcopy = copy.deepcopy(x)
 
@@ -373,9 +364,8 @@ class SmoothFlow(object):
         
         '''
 
-        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
-        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
-        hardcopy.y = hardcopy.y.expand(N)
+        
+        x[1] = x[1].expand((N,1))
 
 
         
@@ -455,7 +445,7 @@ class SmoothFlow(object):
         :param batch_size:
         :return: an ndarray[int] of length num_classes containing the per-class counts
         """
-        pointcloudsize = x.ptr[1]
+        pointcloudsize = x[0].shape[1]
         with torch.no_grad():
             counts = np.zeros(self.num_classes, dtype=int)
             for cert_batch_num in range(ceil(num / batch_size)):
@@ -467,9 +457,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -478,9 +468,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -489,9 +479,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/translation/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/translation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -500,9 +490,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/shearing/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/shearing/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -511,9 +501,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/tapering/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/tapering/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -522,9 +512,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -533,9 +523,9 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
@@ -544,17 +534,17 @@ class SmoothFlow(object):
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
-                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][0]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/affine/'+self.exp_name+'Original.ply')
-                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/affine/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
                 else:
                     raise Exception('Undefined certify_method!')
                 
-
-                predictions = self.base_classifier(batch).argmax(1)
+                batch[0] = batch[0].permute(0, 2, 1)
+                predictions = self.base_classifier(batch[0]).argmax(1)
                 counts += self._count_arr(predictions.cpu().numpy(), self.num_classes)
             return counts
 

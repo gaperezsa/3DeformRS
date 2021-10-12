@@ -180,18 +180,19 @@ if __name__ == "__main__":
         from torch.utils.data import DataLoader
         from CurveNet.core.util import cal_loss, IOStream
         import sklearn.metrics as metrics
-        from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow
+        from SmoothedClassifiers.CurveNet.SmoothFlow import SmoothFlow
 
         if args.dataset == 'modelnet40':
 
             test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),batch_size=1, shuffle=False, drop_last=False)
 
-            #num_classes = 40
+            num_classes = 40
 
             #declare and load pretrained model
             base_classifier = CurveNet().to(device)
             base_classifier = nn.DataParallel(base_classifier)
             base_classifier.load_state_dict(torch.load(args.base_classifier_path))
+            base_classifier.eval()
 
         elif args.dataset == 'modelnet10':
             raise NotImplementedError
@@ -248,13 +249,19 @@ if __name__ == "__main__":
             plywrite = False
 
 
-        #extract one at a time
+        #extract one at a time and the corresponding label
         x = dataset[i]
-        label = x.y.item()
+        if args.model == 'dgcnn' or args.model == 'pointnet':
+            label = x.y.item()
+            x = x.to(device)
+        elif args.model == 'curvenet':
+            label = x[1].item()
+            x[0] = x[0].to(device)
+            x[1] = x[1].to(device)
 
         before_time = time()
         # certify the prediction of g around x
-        x = x.cuda()
+        
         prediction, radius, p_A = smoothed_classifier.certify(x, args.N0, args.N, args.alpha, args.certify_batch_sz,plywrite)
         if args.uniform:
             radius = 2 * args.sigma * (p_A - 0.5)
