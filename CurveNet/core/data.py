@@ -21,7 +21,7 @@ from torch.utils.data import Dataset
 
 
 # change this to your data root
-DATA_DIR = '../data/'
+DATA_DIR = 'CurveNet/data/'
 
 def download_modelnet40():
     if not os.path.exists(DATA_DIR):
