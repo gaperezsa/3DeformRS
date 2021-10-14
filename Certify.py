@@ -12,7 +12,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40','modelnet10']
 model_choices = ['pointnet2','dgcnn','curvenet']
-certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','gaussianNoise','affine'] 
+certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
 
 
@@ -61,6 +61,10 @@ if not os.path.exists('output/samples/twisting'):
     os.makedirs('output/samples/twisting', exist_ok=True)
 if not os.path.exists('output/samples/squeezing'):
     os.makedirs('output/samples/squeezing', exist_ok=True)
+if not os.path.exists('output/samples/stretching'):
+    os.makedirs('output/samples/stretching', exist_ok=True)
+if not os.path.exists('output/samples/affineNoTranslation'):
+    os.makedirs('output/samples/affineNoTranslation', exist_ok=True)
 if not os.path.exists('output/samples/affine'):
     os.makedirs('output/samples/affine', exist_ok=True)
 

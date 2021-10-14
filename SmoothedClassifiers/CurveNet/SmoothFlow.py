@@ -36,146 +36,157 @@ class SmoothFlow(object):
     def _GenCloudGaussianNoise(self, x, N,counter):
         ''' This function returns N gaussian noised versions of the pointcloud x...
             meaning, every point will be randomy translated by some vector, l2 norm of said vector will be the certified radius.
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
         '''
+        #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] 
 
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
+        #Gaussian distribution with std deviation sigma
+        gaussianNoise = (torch.randn((N,pointCloudShape,3))*self.sigma).float().to(self.device)
 
-        gaussianNoise = (torch.randn((N,pointCloudShape,3))*self.sigma).float().to(self.device) #Gaussian distribution for values of vector with std deviation sigma
-
+        #keep the original pointcloud as the first example
         if counter==0:
-            gaussianNoise[0] = torch.tensor([[0,0,0]]).repeat(pointCloudShape,1).float().to(self.device) #keep the original pointcloud as the first example
+            gaussianNoise[0] = torch.tensor([[0,0,0]]).repeat(pointCloudShape,1).float().to(self.device)
+
+        #copy x by value to not affect it by reference
         hardcopy = copy.deepcopy(x)
 
         #expand labels
         hardcopy[1] = hardcopy[1].expand((N,1))
 
-        #apply Gaussian noise to pointclouds
         hardcopy[0] = hardcopy[0].repeat(N,1,1)
-        hardcopy[0] += gaussianNoise
-        
+
+        #apply Gaussian noise and return
+        hardcopy[0] = hardcopy[0] + gaussianNoise
         return hardcopy
 
 
     def _GenCloudRotation(self, x, N,counter):
         ''' This function returns N rotated versions of the pointcloud x
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
         '''
-        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma #Uniform between [-sigma, sigma]
+        #Uniform between [-sigma, sigma]
+        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma 
+        
+        #keep the original pointcloud as the first example
         if counter==0:
-            theta[0] = [0,0,0] #keep the original pointcloud as the first example
+            theta[0] = [0,0,0] 
 
-
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
+        #copy x by value to not affect it by reference
         hardcopy = copy.deepcopy(x)
         
+        #expand the labels
         hardcopy[1] = hardcopy[1].expand((N,1))
         builder = []
 
-        '''
-        for i in range(N): # for every new perturbed sample desired
-
-            #rotation that will be applied to point cloud
-            rotationRepresentation: Rotation = Rotation.from_euler('xyz', theta[i])
-            rotationMatrix = rotationRepresentation.as_matrix()
-            rotationMatrix = torch.from_numpy(rotationMatrix.T).float().to(self.device)
-            builder.append(rotationMatrix)
-        '''
-
-        #faster implementation, same idea
-        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix().T).float().to(self.device) for angle in theta]
-
-        
-        #apply rotation and return
+        #build all needed matrixes for rotations
+        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix()).float().to(self.device) for angle in theta]
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
         allRotations = torch.cat([x.unsqueeze(0) for x in builder])
-        StackedPointcloud = hardcopy[0].repeat(N,1,1)
-        hardcopy[0] = torch.bmm(StackedPointcloud,allRotations)
-        
-        
 
+        ''' 
+        points in hardcopy[0] come in a Batch X Numpoints X 3 manner, we use permute to transpose them leaving batch dimension intact
+        allRotations.shape =                    (Batch X 3 X 3)
+        hardcopy[0].permute(0,2,1).shape =      (Batch X 3 X Numpoints X 3)
+
+        after the batch multiplying and the substraction, we permute again to have flow in a Batch X Numpoints X 3 shape, just as the original input
+        
+        '''
+        flow = (torch.bmm(allRotations,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+
+        #apply rotation and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
         
     def _GenCloudTranslation(self, x, N,counter):
-        ''' This function returns N translated versions of the pointcloud x
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+        ''' This function returns N rotated versions of the pointcloud x
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
         '''
+        #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] 
 
-        translations = torch.randn((N, 3))*self.sigma
-        translations = translations.to(self.device)
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
-        hardcopy = copy.deepcopy(x)
+        #Gaussian distribution with std deviation sigma
+        translations = (torch.randn((N, 3))*self.sigma).to(self.device)
+        
+        #keep the original pointcloud as the first example
         if counter==0:
-            translations[0] = torch.tensor([0,0,0]).float().to(self.device) #keep the original pointcloud as the first example
+            translations[0] = torch.tensor([0,0,0]).float().to(self.device) 
+
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
 
         #expand the label
         hardcopy[1] = hardcopy[1].expand((N,1))
+
+        #build appliable translations from the gaussian samples
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
         builder = []
-
-        '''
-        for translationMatrix in translations: # for every new perturbed sample desired
-
-            #translation that will be applied to point cloud
-            builder.append(translationMatrix.repeat(pointCloudShape,1))
-        '''
-
         builder = [x.repeat(pointCloudShape,1) for x in translations]
-        
-        #apply translation and return
         allTranslations = torch.cat([x for x in builder]).float().to(self.device)
-        allTranslations = torch.reshape(allTranslations,(-1,pointCloudShape,3))
-        hardcopy[0] = hardcopy[0].repeat(N,1,1) + allTranslations
-        
+        flow = torch.reshape(allTranslations,(-1,pointCloudShape,3))
 
+        #apply translation and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
 
 
     def _GenCloudShearing(self, x, N,counter):
         ''' This function returns N sheared versions of the pointcloud x
             shearing will be apllied on the x and y coordinate keeping z coordinate intact
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
         '''
+        #Gaussian distribution with std deviation sigma
+        shearingCoeff = torch.randn((N,1,3))*self.sigma #although 3 values generated, the third wont be used, shearing is a 2 parameter perturbation
 
-        shearingCoeff = torch.randn((N,1,3))*self.sigma #although 3 values generated, the third wont be used
-
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
-
-        hardcopy = copy.deepcopy(x)
+        #keep the original pointcloud as the first example
         if counter==0:
-            shearingCoeff[0] = torch.tensor([[0,0,0]]).float().to(self.device) #keep the original pointcloud as the first example
+            shearingCoeff[0] = torch.tensor([[0,0,0]]).float().to(self.device) 
 
-        
-        x[1] = x[1].expand((N,1))
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
 
-        #shearing is introducing the coefficients in the last row of the identity matrix and not changing the diagonal
-        shearingMatrixs = torch.eye(3).unsqueeze(0).repeat(N,1,1)
-        shearingMatrixs[:,2,:2] = shearingCoeff[:,0,:2]
-        shearingMatrixs = shearingMatrixs.float().to(self.device)
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
 
-        '''                     [[1       0       0  ],
-            shearingMatrix =     [0       1       0  ],
-                                 [coefA   CoefB   1  ]]
+        #shearing is introducing the coefficients in the last column of the identity matrix and not changing the diagonal
+        shearingMatrixes = torch.eye(3).unsqueeze(0).repeat(N,1,1)
+        shearingMatrixes[:,2,:2] = shearingCoeff[:,0,:2]
+        shearingMatrixes = shearingMatrixes.permute(0,2,1).float().to(self.device)
+
+        '''                     [[1         0       CoefA   ],
+            shearingMatrix =     [0         1       CoefB   ],
+                                 [0         1       1       ]]
         '''
-        
-        StackedPointcloud = hardcopy.pos.repeat(N,1,1)
-        ShearedPoints = torch.bmm(StackedPointcloud,shearingMatrixs)
-        hardcopy.pos = torch.reshape(ShearedPoints,(-1,3))
-        
 
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+
+        ''' 
+        points in hardcopy[0] come in a Batch X Numpoints X 3 manner, we use permute to transpose them leaving batch dimension intact
+        shearingMatrixes.shape =                (Batch X 3 X 3)
+        hardcopy[0].permute(0,2,1).shape =      (Batch X 3 X Numpoints X 3)
+
+        after the batch multiplying and the substraction, we permute again to have flow in a Batch X Numpoints X 3 shape, just as the original input
+        
+        '''
+        flow = (torch.bmm(shearingMatrixes,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+
+        #apply shearing and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
 
     def _GenCloudTapering(self, x, N,counter):
 
         ''' This function returns N tapered versions of the pointcloud x
             tapering will be apllied on the x and y coordinate keeping z coordinate intact
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
 
@@ -185,27 +196,31 @@ class SmoothFlow(object):
             Meaning the transformation matrix is higher order and not static given that it depends on the very point its going to be multiplied with.
             this can be noticed here: https://github.com/eth-sri/3dcertify/blob/master/transformations/tapering.py
 
-            thsi funtion has been vectorized in order to compute the perturbed point faster, hence the use of one extra dimension
+            this function has been vectorized in order to compute the perturbed point faster, hence the use of one extra dimension
         '''
 
+        #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] 
+
+        #Gaussian distribution with std deviation sigma
         TaperingCoeff = (torch.randn((N, 2))*self.sigma).to(self.device)
 
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
-
-        hardcopy = copy.deepcopy(x)
+        #keep the original pointcloud as the first example
         if counter==0:
-            TaperingCoeff[0] = torch.tensor([0,0]).float().to(self.device) #keep the original pointcloud as the first example
+            TaperingCoeff[0] = torch.tensor([0,0]).float().to(self.device) 
 
-        
-        x[1] = x[1].expand((N,1))
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
 
-        #have all points that are going to be altered , needed in order to compute the tapering matrixs
-        hardcopy.pos = hardcopy.pos.repeat(N,1)
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
+
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
 
         #preparing a,b and z to fit with the mask
-        #same a,b for every 2*amountOfPointPerCloud because two positions in the diagonal of each matrix are gonna change
-        #same z for every two positions
-        z = hardcopy.pos[:, 2].repeat(2,1).T.flatten()
+        #same a,b for every 2*amountOfPointPerCloud because two positions in the diagonal of each matrix are gonna change and are shared per point cloud
+        #same z for every two positions because two positions in the diagonal of each matrix are gonna change
+        z = hardcopy[0][0,:, 2].repeat(1,N).repeat(2,1).T.flatten()
         a = TaperingCoeff[:,0].repeat(2*pointCloudShape,1).T.flatten()
         b = TaperingCoeff[:,1].repeat(2*pointCloudShape,1).T.flatten()
 
@@ -222,11 +237,13 @@ class SmoothFlow(object):
         
         one per point, meaning shape of TransformationMatrixs is N*pointCloudShape X 3 X 3
         '''
-            
-        StackedPointcloud = torch.reshape(hardcopy.pos,(N*pointCloudShape,1,3))
-        taperedPoints = torch.bmm(StackedPointcloud,TransformationMatrixs)
-        hardcopy.pos = torch.reshape(taperedPoints,(-1,3))
 
+        #apply the taper to each point and reshape as flow 
+        StackedPointcloud = torch.reshape(hardcopy[0],(N*pointCloudShape,3,1))
+        flow = torch.reshape(torch.bmm(TransformationMatrixs,StackedPointcloud),(N,pointCloudShape,3)) - hardcopy[0]
+        
+        #apply taper and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
 
     def _GenCloudTwisting(self, x, N,counter):
@@ -239,26 +256,30 @@ class SmoothFlow(object):
             in particular, for twisting, the trick will be having one transformation PER POINT rather than per pointcloud.
             this is because the twisting applied in the 3d Certify paper was a function of each Z coordinate of each point.
         '''
+        #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] 
 
-        twistingCoeff = (torch.randn((N,1))*self.sigma).float().to(self.device) #although 3 values generated, the third wont be used
+        #Gaussian distribution with std deviation sigma
+        twistingCoeff = (torch.randn((N,1))*self.sigma).float().to(self.device)
 
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
-
-        hardcopy = copy.deepcopy(x)
+        #keep the original pointcloud as the first example
         if counter==0:
-            twistingCoeff[0] = torch.tensor([0]).float().to(self.device) #keep the original pointcloud as the first example
+            twistingCoeff[0] = torch.tensor([0]).float().to(self.device)
 
-        
-        x[1] = x[1].expand((N,1))
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
         
 
         #have all points that are going to be altered , needed in order to compute the twisting matrixs
-        hardcopy.pos = hardcopy.pos.repeat(N,1)
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
 
         #preparing alpha and z to fit with the mask
         #same alpha for every 4*amountOfPointPerCloud because 4 positions in the identity matrix are gonna change
         #same z for every 4 positions (4 position in this mask means a single point in the point cloud
-        z = hardcopy.pos[:, 2].repeat(4,1).T.flatten()
+        z = hardcopy[0][0,:, 2].repeat(1,N).repeat(4,1).T.flatten()
         alpha = twistingCoeff[:,0].repeat(4*pointCloudShape,1).T.flatten()
 
         boolMask = torch.tensor([[1,1,0],[1,1,0],[0,0,0]]).bool().repeat(N*pointCloudShape,1,1).to(self.device)
@@ -279,15 +300,83 @@ class SmoothFlow(object):
         transformer = torch.tensor([0,math.pi/2,-math.pi/2,0]).repeat(N*pointCloudShape).float().to(self.device)
         angles += transformer
         TransformationMatrixs[boolMask] = torch.cos(angles)
-        
-        StackedPointcloud = torch.reshape(hardcopy.pos,(N*pointCloudShape,1,3))
-        twistedPoints = torch.bmm(StackedPointcloud,TransformationMatrixs)
-        hardcopy.pos = torch.reshape(twistedPoints,(-1,3))
 
+        #apply the twisting to each point and reshape as flow 
+        StackedPointcloud = torch.reshape(hardcopy[0],(N*pointCloudShape,3,1))
+        flow = torch.reshape(torch.bmm(TransformationMatrixs,StackedPointcloud),(N,pointCloudShape,3)) - hardcopy[0]
+
+        #apply twisting and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
     
     def _GenCloudSqueezing(self, x, N,counter):
         ''' This function returns N squeezed versions of the pointcloud x
+            squeezing will be apllied by compressing the x coordinate and stretching the y and z coordinate accordingly
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+
+            x will be compressed by a factor K, so, Y and Z will be stretched by 1/sqrt(K)
+        '''
+
+        #Uniform between [-sigma, sigma]
+        Kbar =(-2 * np.random.rand(N,1) + 1) *self.sigma 
+
+        #transforming uniform distributed variable
+        #Kbar=0 -> compressingCoeffK = 1     Identity transform
+        #Kbar=1 -> compressingCoeffK = 1/2   all x coordinates cut to half
+        #Kbar=-1 -> compressingCoeffK = 1/2   all x coordinates cut to half
+        #Kbar=2 -> compressingCoeffK = 1/3   all x coordinates cut to a third
+        #Kbar=-2 -> compressingCoeffK = 1/3   all x coordinates cut to a third
+        #compressing on the x coordinate by a 1/(|Kbar|+1) ratio and stretching y,z accordingly so that barycenter and volume is preserved
+        compressingCoeffK = (1/(1+torch.abs(torch.from_numpy(Kbar)))).float().to(self.device)
+
+        #keep the original pointcloud as the first example
+        if counter==0:
+            compressingCoeffK[0] = torch.tensor([1]).float().to(self.device)
+
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+        
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
+
+
+        #preparing K and z to fit with the mask
+        #same K for every three positions meaning one matrix during mask asignation, one matrix per one point cloud
+        K = compressingCoeffK[:,0].repeat(3,1).T.flatten()
+        divisor = (1 / torch.mul( compressingCoeffK[:,0] , torch.sqrt(compressingCoeffK[:,0]) ) ).repeat(3,1).T
+        divisor[:,0] = 1
+        divisor = divisor.flatten()
+
+        '''K        = [k1              ,k1              ,k1             ,k2             ,k2             ,k2             ,...]
+           divisor  = [1               ,1/k1*sqrt(k1)   ,1/k1*sqrt(k1)  ,1              ,1/k2*sqrt(k2)  ,1/k2*sqrt(k2)  ,...]
+        
+        '''
+
+        boolMask = torch.tensor([[1,0,0],[0,1,0],[0,0,1]]).bool().repeat(N,1,1).to(self.device)
+        TransformationMatrixs = torch.eye(3).repeat(N,1,1).to(self.device)
+        TransformationMatrixs[boolMask] = torch.mul(K,divisor)
+        
+        '''This gives matrixes that look something like this
+
+            [[k               ,0                 ,0         ],
+             [0               ,1/sqrt(k)         ,0         ],
+             [0               ,0                 ,1/sqrt(k)]]
+        
+        '''
+        
+        #batch multiply and get flow
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+        flow = (torch.bmm(TransformationMatrixs,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+        
+
+        #apply squeezing and return
+        hardcopy[0] = hardcopy[0] + flow
+        return hardcopy
+
+    def _GenCloudStretching(self, x, N,counter):
+        ''' This function returns N stretched versions of the pointcloud x
             squeezing will be apllied by stretching the x coordinate and compressing the y and z coordinate accordingly
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
@@ -295,18 +384,28 @@ class SmoothFlow(object):
 
             x will be stretched by a factor K, so, Y and Z will be compressed by 1/sqrt(K)
         '''
-        Kbar =(-2 * np.random.rand(N,1) + 1) *self.sigma #Uniform between [-sigma, sigma]
 
-        stretchingCoeffK = torch.abs(torch.from_numpy(Kbar-1)).float().to(self.device)
+        #Uniform between [-sigma, sigma]
+        Kbar =(-2 * np.random.rand(N,1) + 1) *self.sigma 
 
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
+        #transforming uniform distributed variable
+        #Kbar=0 -> stretchingCoeffK = 1     Identity transform
+        #Kbar=1 -> stretchingCoeffK = 2   all x coordinates doubled
+        #Kbar=-1 -> stretchingCoeffK = 2   all x coordinates doubled
+        #Kbar=2 -> stretchingCoeffK = 3   all x coordinates tripled
+        #Kbar=-2 -> stretchingCoeffK = 3   all x coordinates tripled
+        #stretching on the x coordinate by a |Kbar|+1 ratio and compressing y,z accordingly so that barycenter and volume is preserved
+        stretchingCoeffK = (1+torch.abs(torch.from_numpy(Kbar))).float().to(self.device)
 
-        hardcopy = copy.deepcopy(x)
+        #keep the original pointcloud as the first example
         if counter==0:
-            stretchingCoeffK[0] = torch.tensor([1]).float().to(self.device) #keep the original pointcloud as the first example
+            stretchingCoeffK[0] = torch.tensor([1]).float().to(self.device)
 
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
         
-        x[1] = x[1].expand((N,1))
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
 
 
         #preparing K and z to fit with the mask
@@ -332,11 +431,52 @@ class SmoothFlow(object):
              [0               ,0                 ,1/sqrt(k)]]
         
         '''
-            
-        StackedPointcloud = hardcopy.pos.repeat(N,1,1)
-        squeezedPoints = torch.bmm(StackedPointcloud,TransformationMatrixs)
-        hardcopy.pos = torch.reshape(squeezedPoints,(-1,3))
+        
+        #batch multiply and get flow
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+        flow = (torch.bmm(TransformationMatrixs,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+        
 
+        #apply squeezing and return
+        hardcopy[0] = hardcopy[0] + flow
+        return hardcopy
+
+    def _GenCloudAffineNoTranslation(self, x, N,counter):
+        ''' This function returns N affine transformed versions of the pointcloud x
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+
+        '''
+
+        #Uniform between [-sigma, sigma]
+        affineCoeffs = (torch.randn((N,3,3))*self.sigma).float().to(self.device) 
+
+        #keep the original pointcloud as the first example
+        if counter==0:
+            affineCoeffs[0] = torch.tensor([[0,0,0],[0,0,0],[0,0,0]]).float().to(self.device) #keep the original pointcloud as the first example
+
+        boolMask = torch.tensor([[1,0,0],[0,1,0],[0,0,1]]).bool().repeat(N,1,1).to(self.device)
+        affineCoeffs[boolMask] = 1+affineCoeffs[boolMask]
+        '''This gives affineCoeffs that look something like this
+
+            [[1+a               ,b                 ,c           ],
+             [d                 ,1+e               ,f           ],
+             [g                 ,h                 ,1+i         ]]
+        
+        '''
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
+
+        #batch multiply and get flow
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+        flow = (torch.bmm(affineCoeffs,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+
+        #apply affine with no translation and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
 
     def _GenCloudAffine(self, x, N,counter):
@@ -346,46 +486,52 @@ class SmoothFlow(object):
             counter: int just to cehck if the original pointcloud should be conserved
 
         '''
-        affineCoeffs = (torch.randn((N,4,3))*self.sigma).float().to(self.device) #Uniform between [-sigma, sigma]
+        #amount of points in one point cloud
+        pointCloudShape = x[0].shape[1] 
 
-        pointCloudShape = x[0].shape[1] #amount of points in one point cloud
+        #Uniform between [-sigma, sigma]
+        affineCoeffs = (torch.randn((N,3,4))*self.sigma).float().to(self.device) 
 
+        #keep the original pointcloud as the first example
+        if counter==0:
+            affineCoeffs[0] = torch.tensor([[0,0,0,0],[0,0,0,0],[0,0,0,0]]).float().to(self.device)
+
+        #copy x by value to not affect it by reference
         hardcopy = copy.deepcopy(x)
 
-        if counter==0:
-            affineCoeffs[0] = torch.tensor([[1,0,0],[0,1,0],[0,0,1],[0,0,0]]).float().to(self.device) #keep the original pointcloud as the first example
+        #expand the label
+        hardcopy[1] = hardcopy[1].expand((N,1))
 
+        boolMask = torch.tensor([[1,0,0,0],[0,1,0,0],[0,0,1,0]]).bool().repeat(N,1,1).to(self.device)
+        affineCoeffs[boolMask] = 1+affineCoeffs[boolMask]
         '''This gives affineCoeffs that look something like this
 
-            [[a               ,e                 ,i         ],
-             [b               ,f                 ,j         ],
-             [c               ,g                 ,k         ],
-             [d               ,h                 ,l         ]]
+            [[1+a               ,b                 ,c           j],
+             [d                 ,1+e               ,f           k],
+             [g                 ,h                 ,1+i         l]]]
         
         '''
 
-        
-        x[1] = x[1].expand((N,1))
-
-
-        
-        StackedPointcloud = torch.cat((hardcopy.pos,torch.ones(pointCloudShape).unsqueeze(0).T.float().to(self.device)),1)
+        StackedPointcloud = torch.cat((hardcopy[0][0],torch.ones(pointCloudShape).unsqueeze(0).T.float().to(self.device)),1)
 
         '''This gives StackedPointcloud that look something like this
 
-            [[x1               ,y1                 ,z1                  ,1      ],
-             [x2               ,y2                 ,z2                  ,1      ],
-             [x3               ,y3                 ,z3                  ,1      ],
-             [x4               ,y4                 ,z4                  ,1      ],
+            [[[x1               ,y1                 ,z1                  ,1       ],
+             [x2               ,y2                 ,z2                   ,1       ],
+             [x3               ,y3                 ,z3                   ,1       ],
+             [x4               ,y4                 ,z4                   ,1       ],
              ... 
-             xpointCloudShape  ,ypointCloudShape,  ,zpointCloudShape    ,1      ]]
+             xpointCloudShape  ,ypointCloudShape,  ,zpointCloudShape     ,1       ]]]
         
         '''
 
+        #batch multiply and get flow
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
         StackedPointcloud = StackedPointcloud.repeat(N,1,1)
-        affinePoints = torch.bmm(StackedPointcloud,affineCoeffs)
-        hardcopy.pos = torch.reshape(affinePoints,(-1,3))
+        flow = (torch.bmm(affineCoeffs,StackedPointcloud.permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
 
+        #apply affine and return
+        hardcopy[0] = hardcopy[0] + flow
         return hardcopy
 
 
@@ -528,9 +674,31 @@ class SmoothFlow(object):
                         PC = (batch[0][1]).cpu().detach().numpy()
                         write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
+                
+                elif self.certify_method == 'stretching':
+                    batch = self._GenCloudStretching(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = (batch[0][0]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/stretching/'+self.exp_name+'Original.ply')
+                        PC = (batch[0][1]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/stretching/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'affineNoTranslation':
+                    batch = self._GenCloudAffineNoTranslation (x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = (batch[0][0]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/affineNoTranslation/'+self.exp_name+'Original.ply')
+                        PC = (batch[0][1]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/affineNoTranslation/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
 
                 elif self.certify_method == 'affine':
-                    batch = self._GenCloudAffine (x, this_batch_size,cert_batch_num)
+                    batch = self._GenCloudAffine(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
