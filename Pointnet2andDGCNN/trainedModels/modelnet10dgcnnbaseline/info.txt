@@ -1,0 +1,1 @@
+dataset: modelnet10 | experiment_name: modelnet10dgcnnbaseline | epochs: 40

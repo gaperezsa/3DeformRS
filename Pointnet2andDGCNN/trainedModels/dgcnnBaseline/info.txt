@@ -1,0 +1,1 @@
+experiment_name: dgcnnBaseline | epochs: 200

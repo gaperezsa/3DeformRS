@@ -137,8 +137,7 @@ tensorboard/
 Analysis/
 logs/
 
-Pointent2andDGCNN/Data/
-Pointent2andDGCNN/output/
-Pointent2andDGCNN/tensorboard/
+Pointnet2andDGCNN/Data/
+Pointnet2andDGCNN/tensorboard/
 
 CurveNet/data

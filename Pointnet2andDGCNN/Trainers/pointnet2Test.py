@@ -47,7 +47,7 @@ model = pointnet2Train.Net(test_dataset.num_classes).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 #loadTrainedModel
-checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
+checkpoint = torch.load('../trainedModels/' + args.experiment_name + '/FinalModel.pth.tar')
 model.load_state_dict(checkpoint['model_param'])
 optimizer.load_state_dict(checkpoint['optimizer'])
 

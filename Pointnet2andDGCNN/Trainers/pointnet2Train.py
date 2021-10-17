@@ -153,7 +153,7 @@ if __name__ == '__main__':
     writer = SummaryWriter(tensorboard_path, flush_secs=10)
 
     #dirs to output results
-    batch_exp_path = '../output/train/'
+    batch_exp_path = '../trainedModels/'
     if not os.path.exists(batch_exp_path):
         os.makedirs(batch_exp_path, exist_ok=True)
 
@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
     try:
         #loadTrainedModel
-        checkpoint = torch.load('../output/train/' + args.experiment_name + '/FinalModel.pth.tar')
+        checkpoint = torch.load('../trainedModels/' + args.experiment_name + '/FinalModel.pth.tar')
         model.load_state_dict(checkpoint['model_param'])
         optimizer.load_state_dict(checkpoint['optimizer'])
     except:
