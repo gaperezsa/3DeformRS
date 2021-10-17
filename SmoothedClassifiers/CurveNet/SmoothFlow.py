@@ -126,7 +126,6 @@ class SmoothFlow(object):
 
         #build appliable translations from the gaussian samples
         hardcopy[0] = hardcopy[0].repeat(N,1,1)
-        builder = []
         builder = [x.repeat(pointCloudShape,1) for x in translations]
         allTranslations = torch.cat([x for x in builder]).float().to(self.device)
         flow = torch.reshape(allTranslations,(-1,pointCloudShape,3))
@@ -249,7 +248,7 @@ class SmoothFlow(object):
     def _GenCloudTwisting(self, x, N,counter):
         ''' This function returns N sheared versions of the pointcloud x
             shearing will be apllied on the x and y coordinate keeping z coordinate intact
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
 
@@ -312,7 +311,7 @@ class SmoothFlow(object):
     def _GenCloudSqueezing(self, x, N,counter):
         ''' This function returns N squeezed versions of the pointcloud x
             squeezing will be apllied by compressing the x coordinate and stretching the y and z coordinate accordingly
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
 
@@ -377,8 +376,8 @@ class SmoothFlow(object):
 
     def _GenCloudStretching(self, x, N,counter):
         ''' This function returns N stretched versions of the pointcloud x
-            squeezing will be apllied by stretching the x coordinate and compressing the y and z coordinate accordingly
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            stretching will be apllied by stretching the x coordinate and compressing the y and z coordinate accordingly
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
 
@@ -442,8 +441,8 @@ class SmoothFlow(object):
         return hardcopy
 
     def _GenCloudAffineNoTranslation(self, x, N,counter):
-        ''' This function returns N affine transformed versions of the pointcloud x
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+        ''' This function returns N affine transformed versions of the pointcloud x with no translations
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
 
@@ -481,7 +480,7 @@ class SmoothFlow(object):
 
     def _GenCloudAffine(self, x, N,counter):
         ''' This function returns N affine transformed versions of the pointcloud x
-            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved
 
