@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     # load model
     if args.model == 'pointnet2':
-        from Pointent2andDGCNN.Trainers.pointnet2Train import Net
+        from Pointnet2andDGCNN.Trainers.pointnet2Train import Net
         from torch_geometric.datasets import ModelNet
         import torch_geometric.transforms as T
         from torch_geometric.data import DataLoader
@@ -87,7 +87,7 @@ if __name__ == "__main__":
         if args.dataset == 'modelnet40':
             
             #dataset and loaders
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet40fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet40fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
             print(path)
             test_dataset = ModelNet(path, '40', False, transform, pre_transform)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         elif args.dataset == 'modelnet10':
             
             #dataset and loaders
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet10fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet10fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
             print(path)
             test_dataset = ModelNet(path, '10', False, transform, pre_transform)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             optimizer.load_state_dict(checkpoint['optimizer'])
 
     elif args.model == 'dgcnn':
-        from Pointent2andDGCNN.Trainers.dgcnnTrain import Net
+        from Pointnet2andDGCNN.Trainers.dgcnnTrain import Net
         from torch_geometric.datasets import ModelNet
         import torch_geometric.transforms as T
         from torch_geometric.data import DataLoader
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
         if args.dataset == 'modelnet40':
 
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet40fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet40fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
             print(path)
             test_dataset = ModelNet(path, '40', False, transform, pre_transform)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
         elif args.dataset == 'modelnet10':
 
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointent2andDGCNN/Data/Modelnet10fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet10fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
             print(path)
             test_dataset = ModelNet(path, '10', False, transform, pre_transform)
