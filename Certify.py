@@ -24,7 +24,7 @@ parser.add_argument("--base_classifier_path", type=str, help="path to saved pyto
 parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
-parser.add_argument("--certify_batch_sz", type=int, default=150, help="cetify batch size")
+parser.add_argument("--certify_batch_sz", type=int, default=128, help="cetify batch size")
 parser.add_argument("--skip", type=int, default=1, help="how many examples to skip")
 parser.add_argument("--max", type=int, default=-1, help="stop after this many examples")
 parser.add_argument("--N0", type=int, default=100)
@@ -236,9 +236,9 @@ if __name__ == "__main__":
     start_ind = args.num_chunk * interval
 
     #which pointcloud to take as sample in the output
-    sampleNumber = 0
+    sampleNumber = 100
     
-    for i in range(start_ind, start_ind + interval):
+    for i in range(start_ind+99, start_ind + interval):
 
         # only certify every args.skip examples, and stop after args.max examples
         if i % args.skip != 0:
@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
         #extract one at a time and the corresponding label
         x = dataset[i]
-        if args.model == 'dgcnn' or args.model == 'pointnet':
+        if args.model == 'dgcnn' or args.model == 'pointnet2':
             label = x.y.item()
             x = x.to(device)
         elif args.model == 'curvenet':
