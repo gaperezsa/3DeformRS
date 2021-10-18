@@ -179,7 +179,7 @@ if __name__ == "__main__":
         from torch.utils.data import DataLoader
         from CurveNet.core.util import cal_loss, IOStream
         import sklearn.metrics as metrics
-        from SmoothedClassifiers.CurveNet.SmoothFlow import SmoothFlow
+        from SmoothedClassifiers.CurveNetandPointnet.SmoothFlow import SmoothFlow
 
         if args.dataset == 'modelnet40':
 
@@ -208,7 +208,7 @@ if __name__ == "__main__":
         from Pointnet.DataLoaders import datasets
         from torch.utils.data import DataLoader
         from Pointnet.model import PointNet
-        from SmoothedClassifiers.CurveNet.SmoothFlow import SmoothFlow
+        from SmoothedClassifiers.CurveNetandPointnet.SmoothFlow import SmoothFlow
 
         if args.dataset == 'modelnet40':
             
@@ -289,9 +289,9 @@ if __name__ == "__main__":
     start_ind = args.num_chunk * interval
 
     #which pointcloud to take as sample in the output
-    sampleNumber = 100
+    sampleNumber = 0
     
-    for i in range(start_ind+99, start_ind + interval):
+    for i in range(start_ind, start_ind + interval):
 
         # only certify every args.skip examples, and stop after args.max examples
         if i % args.skip != 0:
