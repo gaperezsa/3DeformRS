@@ -11,7 +11,7 @@ import math
 from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40','modelnet10']
-model_choices = ['pointnet2','dgcnn','curvenet']
+model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
 certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
 
@@ -35,11 +35,6 @@ parser.add_argument("--num_chunk", type=int, default=0, help="which chunk to cer
 parser.add_argument('--uniform', action='store_true', default=False, help='certify with uniform distribution')
 
 args = parser.parse_args()
-
-#squeezing only defined for -1 < sigma < 1
-if args.certify_method == 'squeezing' and (args.sigma > 1 or args.sigma < -1 ):
-    print("certifying for squeezing with sigma : {} is not defined here, setting sigma to 0.999999".format(args.sigma))
-    args.sigma = 0.999999
 
 # full path for output
 args.basedir = os.path.join('output/certify', args.experiment_name)
@@ -200,6 +195,64 @@ if __name__ == "__main__":
 
         elif args.dataset == 'modelnet10':
             raise NotImplementedError
+    
+    elif args.model == 'pointnet':
+        
+        import sys
+        sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet")
+
+        import torch
+        import torch.nn as nn
+        import torch.nn.functional as F
+        import torch.optim as optim
+        from Pointnet.DataLoaders import datasets
+        from torch.utils.data import DataLoader
+        from Pointnet.model import PointNet
+        from SmoothedClassifiers.CurveNet.SmoothFlow import SmoothFlow
+
+        if args.dataset == 'modelnet40':
+            
+            test_data = datasets.modelnet40(num_points=args.num_points, split='test', rotate='none')
+
+            test_loader = DataLoader(
+                dataset=test_data,
+                batch_size=1,
+                shuffle=False,
+                num_workers=0
+            )
+            
+            num_classes = 40
+
+            base_classifier = PointNet(
+                number_points=args.num_points,
+                num_classes=test_data.num_classes,
+                max_features=args.num_points,
+                pool_function='max',
+                transposed_input= True
+            )
+            base_classifier = base_classifier.to(device)
+
+            objective = nn.CrossEntropyLoss()
+            optimizer = optim.Adam(base_classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
+            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
+
+            #loadTrainedModel
+            try:
+                checkpoint = torch.load(args.base_classifier_path)
+                base_classifier.load_state_dict(checkpoint['model_param'])
+                optimizer.load_state_dict(checkpoint['optimizer'])
+                scheduler.load_state_dict(checkpoint['scheduler'])
+            except:
+                #before saying there is no model check if it is the 3d certify authors pretrained model
+                try:
+                    base_classifier.load_state_dict(torch.load(args.base_classifier_path))
+                except:
+                    print('no pretrained model found')
+            
+            base_classifier.eval()
+
+        elif args.dataset == 'modelnet10':
+            raise NotImplementedError
         
     else:
         raise Exception("Undefined model!") 
@@ -260,6 +313,11 @@ if __name__ == "__main__":
             x = x.to(device)
         elif args.model == 'curvenet':
             label = x[1].item()
+            x[0] = x[0].to(device)
+            x[1] = x[1].to(device)
+        elif args.model == 'pointnet':
+            label = x[2].item()
+            x[1] = x[2]
             x[0] = x[0].to(device)
             x[1] = x[1].to(device)
 

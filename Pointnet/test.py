@@ -1,8 +1,4 @@
 import argparse
-import os
-import datetime
-import logging
-import sys
 from pathlib import Path
 from typing import Union
 
@@ -11,8 +7,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
 
 from DataLoaders import datasets
 from model import PointNet
