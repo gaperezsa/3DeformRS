@@ -134,7 +134,6 @@ dmypy.json
 Data/
 output/
 tensorboard/
-Analysis/
 logs/
 
 Pointnet2andDGCNN/Data/
