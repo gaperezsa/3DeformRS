@@ -10,6 +10,8 @@ import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import DynamicEdgeConv, global_max_pool
 
+import sys
+sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet2andDGCNN/Trainers/")
 from pointnet2Train import MLP
 
 class Net(torch.nn.Module):
