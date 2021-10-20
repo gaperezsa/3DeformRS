@@ -37,11 +37,15 @@ for model in models:
             csvPath = base_path+current_experiment+common_end
             df = pd.read_csv(csvPath,skiprows=1) #first row is the command used, not needed here
             totalRows = df.count()[0]
+            Xdomain = np.linspace(0,df["radius"].max(),num=totalRows)
+            '''
             step = df["radius"].max() / samples
             Xdomain = np.arange(samples+2) * step
             Xdomain[-1] = Xdomain[-2] + (np.abs(Xdomain[-2]-Xdomain[-1]))/100
-            Yvalues = [df.loc[ (df["correct"]==1) & (df["radius"] >= currentThreshold) ].count()[0] / totalRows for currentThreshold in Xdomain]
-            print(model+deformation+' \u03C3='+str(sigma)+'\nx values: {}  \ny values: {}'.format(Xdomain.tolist(),Yvalues))
+            '''
+            Yvalues = [( (df["correct"] == 1) & (df["radius"] >= i) ).sum()/totalRows for i in Xdomain]
+            print(model+deformation+' \u03C3='+str(sigma)+'\n')
+            #print(model+deformation+' \u03C3='+str(sigma)+'\nx values: {}  \ny values: {}'.format(Xdomain.tolist(),Yvalues))
             plt.plot(Xdomain.tolist(), Yvalues,label='\u03C3='+str(sigma))
         except:
             print("unable to display {}".format(current_experiment))
