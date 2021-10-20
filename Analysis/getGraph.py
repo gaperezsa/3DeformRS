@@ -4,9 +4,9 @@ import matplotlib
 import math
 import matplotlib.pyplot as plt
 '''
-This program will be able to retrieve the graph for a specific model, running some kind of deformation and given the sigmas interested in
-this is all asuming that when experiments where run, the convention {model}{deformation}{dataset spec if needed}{sigma} was followed
-examples: pointnet2GaussianNoise0.02 , dgcnnShearing0.40 , dgcnnAffineModelnet10_0.005
+This program will be able to retrieve the graph for a list of models, running some kind of deformation and given the sigmas interested in.
+This is all asuming that when experiments where run, the convention {model}{deformation}{dataset spec if needed}{sigma} was followed
+examples: pointnet2GaussianNoise0.02 , dgcnnShearing0.4 , dgcnnAffineModelnet10_0.005
 '''
 #change these as needed for current query
 models=["pointnet","pointnet2","dgcnn","curvenet"]
@@ -16,7 +16,7 @@ sigmas = [0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3]
 
 
 
-samples = 20
+samples = 80
 counter = 1
 base_path = "../output/certify/"
 common_end = "/certification_chunk_1out_of1.csv"
@@ -39,6 +39,7 @@ for model in models:
             totalRows = df.count()[0]
             step = df["radius"].max() / samples
             Xdomain = np.arange(samples+2) * step
+            Xdomain[-1] = Xdomain[-2] + (np.abs(Xdomain[-2]-Xdomain[-1]))/100
             Yvalues = [df.loc[ (df["correct"]==1) & (df["radius"] >= currentThreshold) ].count()[0] / totalRows for currentThreshold in Xdomain]
             print(model+deformation+' \u03C3='+str(sigma)+'\nx values: {}  \ny values: {}'.format(Xdomain.tolist(),Yvalues))
             plt.plot(Xdomain.tolist(), Yvalues,label='\u03C3='+str(sigma))
