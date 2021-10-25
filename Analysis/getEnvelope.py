@@ -15,7 +15,7 @@ parser.add_argument('--parallel', action='store_true', default=False, help='add 
 args = parser.parse_args()
 
 #change these as needed for current query
-models=["pointnet","pointnet2","dgcnn"]
+models=["pointnet","pointnet2","dgcnn","curvenet"]
 deformation="Rotation"
 usingModelnet10 = False
 sigmas = [0.025,0.05,0.0625,0.075,0.0875,0.1,0.1125,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3]

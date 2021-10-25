@@ -12,7 +12,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40','modelnet10']
 model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
-certification_method_choices = ['rotation','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
+certification_method_choices = ['rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
 
 
@@ -21,7 +21,7 @@ parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, h
 parser.add_argument("--model", type=str, choices=model_choices, help="model name")
 parser.add_argument('--num_points', type=int, default=1024,help='num of points to use in case of curvenet, default 1024 recommended')
 parser.add_argument("--base_classifier_path", type=str, help="path to saved pytorch model of base classifier")
-parser.add_argument("--certify_method", type=str, default='rotation', required=True, choices=certification_method_choices, help='type of certification for certification')
+parser.add_argument("--certify_method", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
 parser.add_argument("--certify_batch_sz", type=int, default=128, help="cetify batch size")
@@ -259,7 +259,7 @@ if __name__ == "__main__":
 
        
 
-    if args.certify_method == 'rotation':
+    if args.certify_method == 'rotationZ' or args.certify_method == 'rotationXZ' or args.certify_method == 'rotationXYZ':
         args.sigma *= math.pi # For rotaions to transform the angles to [0, pi]
     # create the smooothed classifier g
     smoothed_classifier = SmoothFlow(base_classifier, num_classes, args.certify_method, args.sigma)
