@@ -18,11 +18,11 @@ args = parser.parse_args()
 
 #change these as needed for current query
 models=["pointnet","pointnet2","dgcnn","curvenet"]
-deformation="Rotation"
+deformation="RotationZ"
 usingModelnet10 = False
-sigmas = [0.025,0.05,0.0625,0.075,0.0875,0.1,0.1125,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3]
+sigmas = [0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,1]
 counter = 1
-base_path = "../output/certify/"
+base_path = "../output/certify/ZRotations/"
 common_end = "/certification_chunk_1out_of1.csv"
 current_experiment = ""
 
@@ -36,9 +36,14 @@ def allYvals(dfsAndXdomain):
     df,Xdomain = dfsAndXdomain
     return [( (df["correct"] == 1) & (df["radius"] >= i) ).sum()/totalRows for i in Xdomain]
 
-#calculate hypervolume based on radius if deformation is rotation
-def hyperVolofRot(radius):
+#calculate hypervolume based on radius if deformation is rotation xyz
+def hyperVolofRotXYZ(radius):
     transformedDomain = (4/3)*np.power(radius,3) #volume of a 3-ball in L1 norm (octahedron)
+    return transformedDomain
+
+#calculate hypervolume based on radius if deformation is rotation xyz
+def hyperVolofRotXZ(radius):
+    transformedDomain = np.square(np.sqrt(2)*radius) #area of a 2-ball in L1 norm (rhombus)
     return transformedDomain
 
 #this numbers based on the fact that ,at max, 4 models will be requested
@@ -47,9 +52,11 @@ columns = 2 if len(models)>=2 else 1
 
 def DomainTransformer(deformation,radius):
     switcher = {
-        "Rotation": hyperVolofRot,
+        "Rotation"   : hyperVolofRotXYZ,
+        "RotationXYZ": hyperVolofRotXYZ,
+        "RotationXZ" : hyperVolofRotXZ
     }
-    return switcher.get(deformation,"not a valid deforamtion with defines hypervolume")(radius)
+    return switcher.get(deformation,"not a valid deforamtion with defined hypervolume")(radius)
 
 for model in models:
     plt.subplot(rows, columns, counter)
@@ -68,16 +75,20 @@ for model in models:
         else:
             Yvalues = [[( (df["correct"] == 1) & (df["radius"] >= i) ).sum()/totalRows for i in Xdomain] for df,Xdomain in zip(dfs,Xdomains)]
         print(model+deformation+' \u03C3='+str(sigmas)+'\n')
+        showLegendCounter = 0
         for Xdomain,sigma,Yvalue in zip(Xdomains,sigmas,Yvalues):
             if (args.hypervolume):
                 plottingDomain = DomainTransformer(deformation,Xdomain)
             else:
                 plottingDomain = Xdomain
 
+            label = '\u03C3='+str(sigma) if showLegendCounter%2==0 else '_\u03C3='+str(sigma) #those labels starting with _ are ignored by the automatic legend
+            showLegendCounter += 1
+
             if args.envelope:
-                plt.plot(plottingDomain.tolist(), Yvalue,'--',label='\u03C3='+str(sigma))
+                plt.plot(plottingDomain.tolist(), Yvalue,'--',label=label)
             else:
-                plt.plot(plottingDomain.tolist(), Yvalue,label='\u03C3='+str(sigma))
+                plt.plot(plottingDomain.tolist(), Yvalue,label=label)
         if args.envelope:
             print('calculating envelope...')
             maxRadius = max([ Xdomain[-1] for Xdomain in Xdomains ])
@@ -97,9 +108,12 @@ for model in models:
             print('done!\n')
         
         #draw other papers points
-        if (model == "pointnet" and deformation == "Rotation" and args.hypervolume):
-            plt.plot(np.power(np.pi,3)/5832,0.587,'ro',label='3D certify2')
-            plt.plot(np.power(np.pi,3)/91125,0.728,'ro',label='3D certify1') 
+        if (model == "pointnet" and (deformation == "RotationXYZ" or deformation == "Rotation")  and args.hypervolume):
+            plt.plot(np.power(np.pi,3)/5832,0.587,'ro',label='3D certify')
+            plt.plot(np.power(np.pi,3)/91125,0.728,'ro')
+        elif (model == "pointnet" and deformation == "RotationXZ" and args.hypervolume):
+            plt.plot(np.square(np.pi)/81,0.739,'ro',label='3D certify')
+            plt.plot(np.square(np.pi)/324,0.891,'ro') 
     except:
         print("unable to display {}".format(current_experiment))
     # Settings
@@ -111,7 +125,7 @@ for model in models:
     
     plt.ylabel('certified accuracy')
     plt.ylim([0,1])
-    plt.legend()
+    plt.legend(loc='upper right', bbox_to_anchor=(1, 1))
     plt.grid()
     counter+=1
 
