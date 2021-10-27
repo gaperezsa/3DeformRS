@@ -63,8 +63,90 @@ class SmoothFlow(object):
         hardcopy.pos = hardcopy.pos + gaussianNoise
         return hardcopy
 
+    def _GenCloudRotationZ(self, x, N,counter):
+        ''' This function returns N rotated versions of the pointcloud x
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+        '''
+        #amount of points in one point cloud
+        pointCloudShape = x.pos.shape[0]
+        
+        #Uniform between [-sigma, sigma]
+        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma 
 
-    def _GenCloudRotation(self, x, N,counter):
+        #null X and Y rotations
+        theta[:,0:2] = 0
+
+        #keep the original pointcloud as the first example
+        if counter==0:
+            theta[0] = [0,0,0]
+
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+
+        #expand labels,pointer,batch indexes
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+
+        #build the rotation matrixes needed
+        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix()).float().to(self.device) for angle in theta]
+
+        #rotate to get flow
+        allRotations = torch.cat([x.unsqueeze(0) for x in builder])
+        stackedPointcloud = hardcopy.pos.repeat(N,1,1)
+        flow = (torch.bmm(allRotations,stackedPointcloud.permute(0,2,1)) - stackedPointcloud.permute(0,2,1)).permute(0,2,1)
+        flow = torch.reshape(flow,(-1,3))
+
+        #apply rotation and return
+        hardcopy.pos = hardcopy.pos.repeat(N,1).float().to(self.device)
+        hardcopy.pos = hardcopy.pos + flow
+        return hardcopy
+
+    def _GenCloudRotationXZ(self, x, N,counter):
+        ''' This function returns N rotated versions of the pointcloud x
+            x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+        '''
+        #amount of points in one point cloud
+        pointCloudShape = x.pos.shape[0]
+        
+        #Uniform between [-sigma, sigma]
+        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma 
+
+        #null all Y rotations
+        theta[:,1] = 0
+
+        #keep the original pointcloud as the first example
+        if counter==0:
+            theta[0] = [0,0,0]
+
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+
+        #expand labels,pointer,batch indexes
+        hardcopy.batch = torch.arange(N).unsqueeze(1).expand(N, pointCloudShape).flatten().type(torch.LongTensor).to(self.device)
+        hardcopy.ptr = (torch.arange(N+1) * pointCloudShape).type(torch.LongTensor).to(self.device)
+        hardcopy.y = hardcopy.y.expand(N)
+
+        #build the rotation matrixes needed
+        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix()).float().to(self.device) for angle in theta]
+
+        #rotate to get flow
+        allRotations = torch.cat([x.unsqueeze(0) for x in builder])
+        stackedPointcloud = hardcopy.pos.repeat(N,1,1)
+        flow = (torch.bmm(allRotations,stackedPointcloud.permute(0,2,1)) - stackedPointcloud.permute(0,2,1)).permute(0,2,1)
+        flow = torch.reshape(flow,(-1,3))
+
+        #apply rotation and return
+        hardcopy.pos = hardcopy.pos.repeat(N,1).float().to(self.device)
+        hardcopy.pos = hardcopy.pos + flow
+        return hardcopy
+
+
+    def _GenCloudRotationXYZ(self, x, N,counter):
         ''' This function returns N rotated versions of the pointcloud x
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
@@ -630,8 +712,30 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotation':
-                    batch = self._GenCloudRotation(x, this_batch_size,cert_batch_num)
+                elif self.certify_method == 'rotationZ':
+                    batch = self._GenCloudRotationZ(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Original.ply')
+                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'rotationXZ':
+                    batch = self._GenCloudRotationXZ(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = batch.pos[0:pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Original.ply')
+                        PC =batch.pos[pointcloudsize:2*pointcloudsize].cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'rotationXYZ':
+                    batch = self._GenCloudRotationXYZ(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:

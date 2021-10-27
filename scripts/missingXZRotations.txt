@@ -1,0 +1,2 @@
+  --certify_batch_sz 128 --model dgcnn --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/dgcnnBaseline/FinalModel.pth.tar --sigma 0.075 --certify_method rotationXZ --uniform --experiment_name dgcnnRotationXZ0.075
+  --certify_batch_sz 512 --model curvenet --dataset modelnet40 --base_classifier_path CurveNet/checkpoints/curvenet_cls_1/models/model.t7 --sigma 0.075 --certify_method rotationXZ --uniform --experiment_name curvenetRotationXZ0.075

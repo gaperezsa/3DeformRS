@@ -1,0 +1,13 @@
+  --model dgcnn --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/dgcnnBaseline/FinalModel.pth.tar --sigma 0.0625 --certify_method rotation --uniform --experiment_name dgcnnRotation0.0625
+  --model dgcnn --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/dgcnnBaseline/FinalModel.pth.tar --sigma 0.0875 --certify_method rotation --uniform --experiment_name dgcnnRotation0.0875
+  --model dgcnn --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/dgcnnBaseline/FinalModel.pth.tar --sigma 0.1125 --certify_method rotation --uniform --experiment_name dgcnnRotation0.01125
+  --model pointnet2 --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/pointnetBaseline/FinalModel.pth.tar --sigma 0.0625 --certify_method rotation --uniform --experiment_name pointnet2Rotation0.0625
+  --model pointnet2 --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/pointnetBaseline/FinalModel.pth.tar --sigma 0.0875 --certify_method rotation --uniform --experiment_name pointnet2Rotation0.0875
+  --model pointnet2 --dataset modelnet40 --base_classifier_path Pointnet2andDGCNN/trainedModels/pointnetBaseline/FinalModel.pth.tar --sigma 0.1125 --certify_method rotation --uniform --experiment_name pointnet2Rotation0.1125
+  --model curvenet --dataset modelnet40 --base_classifier_path CurveNet/checkpoints/curvenet_cls_1/models/model.t7 --sigma 0.0625 --certify_method rotation --uniform --experiment_name curvenetRotation0.0625
+  --model curvenet --dataset modelnet40 --base_classifier_path CurveNet/checkpoints/curvenet_cls_1/models/model.t7 --sigma 0.0875 --certify_method rotation --uniform --experiment_name curvenetRotation0.0875
+  --model curvenet --dataset modelnet40 --base_classifier_path CurveNet/checkpoints/curvenet_cls_1/models/model.t7 --sigma 0.1125 --certify_method rotation --uniform --experiment_name curvenetRotation0.1125
+  --model pointnet --dataset modelnet40 --base_classifier_path Pointnet/trainedModels/AuthorsPretrained/1024p_natural.pth --sigma 0.0625 --certify_method rotation --uniform --experiment_name pointnetRotation0.0625
+  --model pointnet --dataset modelnet40 --base_classifier_path Pointnet/trainedModels/AuthorsPretrained/1024p_natural.pth --sigma 0.0875 --certify_method rotation --uniform --experiment_name pointnetRotation0.0875
+  --model pointnet --dataset modelnet40 --base_classifier_path Pointnet/trainedModels/AuthorsPretrained/1024p_natural.pth --sigma 0.1125 --certify_method rotation --uniform --experiment_name pointnetRotation0.1125
+  
