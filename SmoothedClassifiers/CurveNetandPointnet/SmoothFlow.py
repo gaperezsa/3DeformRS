@@ -788,8 +788,8 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotationZ':
-                    batch = self._GenCloudRotationZ(x, this_batch_size,cert_batch_num)
+                elif self.certify_method == 'rotationY':
+                    batch = self._GenCloudRotationY(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
@@ -799,8 +799,8 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotationY':
-                    batch = self._GenCloudRotationY(x, this_batch_size,cert_batch_num)
+                elif self.certify_method == 'rotationZ':
+                    batch = self._GenCloudRotationZ(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:
