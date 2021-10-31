@@ -62,6 +62,91 @@ class SmoothFlow(object):
         hardcopy[0] = hardcopy[0] + gaussianNoise
         return hardcopy
 
+    def _GenCloudRotationX(self, x, N,counter):
+        ''' This function returns N rotated versions of the pointcloud x
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+        '''
+        #Uniform between [-sigma, sigma]
+        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma 
+
+        #null Y and Z rotations
+        theta[:,1] = 0
+        theta[:,2] = 0
+        
+        #keep the original pointcloud as the first example
+        if counter==0:
+            theta[0] = [0,0,0] 
+
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+        
+        #expand the labels
+        hardcopy[1] = hardcopy[1].expand((N,1))
+        builder = []
+
+        #build all needed matrixes for rotations
+        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix()).float().to(self.device) for angle in theta]
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+        allRotations = torch.cat([x.unsqueeze(0) for x in builder])
+
+        ''' 
+        points in hardcopy[0] come in a Batch X Numpoints X 3 manner, we use permute to transpose them leaving batch dimension intact
+        allRotations.shape =                    (Batch X 3 X 3)
+        hardcopy[0].permute(0,2,1).shape =      (Batch X 3 X Numpoints X 3)
+
+        after the batch multiplying and the substraction, we permute again to have flow in a Batch X Numpoints X 3 shape, just as the original input
+        
+        '''
+        flow = (torch.bmm(allRotations,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+
+        #apply rotation and return
+        hardcopy[0] = hardcopy[0] + flow
+        return hardcopy
+
+    def _GenCloudRotationY(self, x, N,counter):
+        ''' This function returns N rotated versions of the pointcloud x
+            x: list consisting of 2 tensors: data and labels, x[0] = 1 X Numpoints X 3 , x[1] = Numpointclouds X 1. Numpointclouds is normaly 1
+            N: int 
+            counter: int just to cehck if the original pointcloud should be conserved
+        '''
+        #Uniform between [-sigma, sigma]
+        theta = (-2 * np.random.rand(N,3) + 1) *self.sigma 
+
+        #null X and Z rotations
+        theta[:,0] = 0
+        theta[:,2] = 0
+        
+        #keep the original pointcloud as the first example
+        if counter==0:
+            theta[0] = [0,0,0] 
+
+        #copy x by value to not affect it by reference
+        hardcopy = copy.deepcopy(x)
+        
+        #expand the labels
+        hardcopy[1] = hardcopy[1].expand((N,1))
+        builder = []
+
+        #build all needed matrixes for rotations
+        builder = [torch.from_numpy(Rotation.from_euler('xyz', angle).as_matrix()).float().to(self.device) for angle in theta]
+        hardcopy[0] = hardcopy[0].repeat(N,1,1)
+        allRotations = torch.cat([x.unsqueeze(0) for x in builder])
+
+        ''' 
+        points in hardcopy[0] come in a Batch X Numpoints X 3 manner, we use permute to transpose them leaving batch dimension intact
+        allRotations.shape =                    (Batch X 3 X 3)
+        hardcopy[0].permute(0,2,1).shape =      (Batch X 3 X Numpoints X 3)
+
+        after the batch multiplying and the substraction, we permute again to have flow in a Batch X Numpoints X 3 shape, just as the original input
+        
+        '''
+        flow = (torch.bmm(allRotations,hardcopy[0].permute(0,2,1)) - hardcopy[0].permute(0,2,1)).permute(0,2,1)
+
+        #apply rotation and return
+        hardcopy[0] = hardcopy[0] + flow
+        return hardcopy
 
     def _GenCloudRotationZ(self, x, N,counter):
         ''' This function returns N rotated versions of the pointcloud x
@@ -692,8 +777,30 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
+                elif self.certify_method == 'rotationX':
+                    batch = self._GenCloudRotationX(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = (batch[0][0]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Original.ply')
+                        PC = (batch[0][1]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
                 elif self.certify_method == 'rotationZ':
                     batch = self._GenCloudRotationZ(x, this_batch_size,cert_batch_num)
+
+                    #write as ply the original and a perturbed pointcloud
+                    if (not self.plywritten) and plywrite and this_batch_size > 2:
+                        PC = (batch[0][0]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Original.ply')
+                        PC = (batch[0][1]).cpu().detach().numpy()
+                        write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
+                        self.plywritten = True
+
+                elif self.certify_method == 'rotationY':
+                    batch = self._GenCloudRotationY(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
                     if (not self.plywritten) and plywrite and this_batch_size > 2:

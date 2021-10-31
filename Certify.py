@@ -12,7 +12,7 @@ from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40','modelnet10']
 model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
-certification_method_choices = ['rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
+certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
 
 
