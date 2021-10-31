@@ -14,15 +14,16 @@ parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument('--parallel', action='store_true', default=False, help='add flag to use parallel computation of the graphs')
 parser.add_argument('--envelope', action='store_true', default=False, help='add flag to make the envelope curve appear solid and the other as dashlines underneath it')
 parser.add_argument('--hypervolume', action='store_true', default=False, help='add flag to make the X axis in terms of hypervolume certified')
+parser.add_argument('--less_labels', action='store_true', default=False, help='add flag to legend just half of the curves')
 args = parser.parse_args()
 
 #change these as needed for current query
-models=["pointnet","pointnet2","dgcnn","curvenet"]
+models=["64pointnet"]#,"pointnet2","dgcnn","curvenet"]
 deformation="RotationZ"
 usingModelnet10 = False
-sigmas = [0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,1]
+sigmas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 counter = 1
-base_path = "../output/certify/ZRotations/"
+base_path = "../output/3DcertifyComparison/"
 common_end = "/certification_chunk_1out_of1.csv"
 current_experiment = ""
 
@@ -75,20 +76,27 @@ for model in models:
         else:
             Yvalues = [[( (df["correct"] == 1) & (df["radius"] >= i) ).sum()/totalRows for i in Xdomain] for df,Xdomain in zip(dfs,Xdomains)]
         print(model+deformation+' \u03C3='+str(sigmas)+'\n')
+
+        #useful when less_labels
         showLegendCounter = 0
+
         for Xdomain,sigma,Yvalue in zip(Xdomains,sigmas,Yvalues):
             if (args.hypervolume):
                 plottingDomain = DomainTransformer(deformation,Xdomain)
             else:
                 plottingDomain = Xdomain
 
-            label = '\u03C3='+str(sigma) if showLegendCounter%2==0 else '_\u03C3='+str(sigma) #those labels starting with _ are ignored by the automatic legend
-            showLegendCounter += 1
+            if (args.less_labels):
+                label = '\u03C3='+str(sigma) if showLegendCounter%2==0 else '_\u03C3='+str(sigma) #those labels starting with _ are ignored by the automatic legend
+                showLegendCounter += 1
+            else :
+                label = '\u03C3='+str(sigma)
 
             if args.envelope:
                 plt.plot(plottingDomain.tolist(), Yvalue,'--',label=label)
             else:
                 plt.plot(plottingDomain.tolist(), Yvalue,label=label)
+
         if args.envelope:
             print('calculating envelope...')
             maxRadius = max([ Xdomain[-1] for Xdomain in Xdomains ])
