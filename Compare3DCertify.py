@@ -31,6 +31,7 @@ parser.add_argument("--alpha", type=float, default=0.001, help="failure probabil
 parser.add_argument("--chunks", type=int, default=1, help="how many chunks do we cut the test set into")
 parser.add_argument("--num_chunk", type=int, default=0, help="which chunk to certify")
 parser.add_argument('--uniform', action='store_true', default=False, help='certify with uniform distribution')
+parser.add_argument('--cpuonly', action='store_true', default=False, help='force program to only use CPU')
 
 args = parser.parse_args()
 
@@ -66,8 +67,12 @@ args.outfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_ch
 
 if __name__ == "__main__":
 
-    #use cuda if available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    if not args.cpuonly:
+        #use cuda if available
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else:
+        device = torch.device('cpu')
 
     # load model
     if args.model == 'pointnet':
@@ -104,7 +109,6 @@ if __name__ == "__main__":
                 pool_function='max',
                 transposed_input= True
             )
-            base_classifier = base_classifier.to(device)
 
             objective = nn.CrossEntropyLoss()
             optimizer = optim.Adam(base_classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
@@ -112,17 +116,12 @@ if __name__ == "__main__":
 
             #loadTrainedModel
             try:
-                checkpoint = torch.load(args.base_classifier_path)
-                base_classifier.load_state_dict(checkpoint['model_param'])
-                optimizer.load_state_dict(checkpoint['optimizer'])
-                scheduler.load_state_dict(checkpoint['scheduler'])
+                base_classifier.load_state_dict(torch.load(args.base_classifier_path,map_location=device))
             except:
-                #before saying there is no model check if it is the 3d certify authors pretrained model
-                try:
-                    base_classifier.load_state_dict(torch.load(args.base_classifier_path))
-                except:
-                    print('no pretrained model found')
-            
+                print('no pretrained model found')
+
+            base_classifier = base_classifier.to(device)
+
             base_classifier.eval()
 
         elif args.dataset == 'modelnet10':
@@ -139,7 +138,7 @@ if __name__ == "__main__":
     if args.certify_method == 'rotationZ' or args.certify_method == 'rotationXZ' or args.certify_method == 'rotationXYZ':
         args.sigma *= math.pi # For rotaions to transform the angles to [0, pi]
     # create the smooothed classifier g
-    smoothed_classifier = SmoothFlow(base_classifier, num_classes, args.certify_method, args.sigma)
+    smoothed_classifier = SmoothFlow(base_classifier, num_classes, args.certify_method, args.sigma, device=device)
 
     # prepare output txt and csv files
     csvoutfile = os.path.join(args.basedir, 'certification_chunk_'+str(args.num_chunk+1)+'out_of'+str(args.chunks)+'.csv')
