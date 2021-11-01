@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
        
 
-    if args.certify_method == 'rotationZ' or args.certify_method == 'rotationXZ' or args.certify_method == 'rotationXYZ':
+    if args.certify_method[0:8] == 'rotation':
         args.sigma *= math.pi # For rotaions to transform the angles to [0, pi]
     # create the smooothed classifier g
     smoothed_classifier = SmoothFlow(base_classifier, num_classes, args.certify_method, args.sigma, device=device)
