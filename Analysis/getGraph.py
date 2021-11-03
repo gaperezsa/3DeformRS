@@ -19,9 +19,9 @@ args = parser.parse_args()
 
 #change these as needed for current query
 models=["64pointnet"]#,"pointnet2","dgcnn","curvenet"]
-deformation="RotationZ"
+deformation="RotationY"
 usingModelnet10 = False
-sigmas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+sigmas = [0.025,0.05,0.075,0.1,0.15,0.2,0.25,0.3,0.35,0.4]
 counter = 1
 base_path = "../output/3DcertifyComparison/"
 common_end = "/certification_chunk_1out_of1.csv"
@@ -116,12 +116,14 @@ for model in models:
             print('done!\n')
         
         #draw other papers points
-        if (model == "pointnet" and (deformation == "RotationXYZ" or deformation == "Rotation")  and args.hypervolume):
-            plt.plot(np.power(np.pi,3)/5832,0.587,'ro',label='3D certify')
-            plt.plot(np.power(np.pi,3)/91125,0.728,'ro')
-        elif (model == "pointnet" and deformation == "RotationXZ" and args.hypervolume):
-            plt.plot(np.square(np.pi)/81,0.739,'ro',label='3D certify')
-            plt.plot(np.square(np.pi)/324,0.891,'ro') 
+        if (model == "64pointnet" and deformation == "RotationZ"):
+            plt.plot(0.0523599,0.937,'ro')#3 degreees, 93.7%
+            plt.plot(0.349066,0.967,'ro',label='3D certify')#20 degreees, 96.7%
+            plt.plot(1.0472,0.957,'ro')#60 degrees, 95.7%
+        elif (model == "64pointnet" and deformation == "RotationX"):
+            plt.plot(0.0174533,88/90,'ro',label='3D certify')#1 degree, 97.7%
+        elif (model == "64pointnet" and deformation == "RotationY"):
+            plt.plot(0.0174533,89/90,'ro',label='3D certify')#1 degree, 98.8%
     except:
         print("unable to display {}".format(current_experiment))
     # Settings
