@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
 parser.add_argument("--model", type=str, choices=model_choices, help="model name")
 parser.add_argument('--num_points', type=int, default=1024,help='num of points to use in case of curvenet, default 1024 recommended')
+parser.add_argument('--max_features', type=int, default=1024,help='max features in Pointnet inner layers')
 parser.add_argument("--base_classifier_path", type=str, help="path to saved pytorch model of base classifier")
 parser.add_argument("--certify_method", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
@@ -226,7 +227,7 @@ if __name__ == "__main__":
             base_classifier = PointNet(
                 number_points=args.num_points,
                 num_classes=test_data.num_classes,
-                max_features=args.num_points,
+                max_features=args.max_features,
                 pool_function='max',
                 transposed_input= True
             )
