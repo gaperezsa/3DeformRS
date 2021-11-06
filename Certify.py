@@ -8,7 +8,6 @@ from time import time
 import datetime
 import os
 import math
-from torchvision.models.resnet import resnet50
 
 dataset_choices = ['modelnet40','modelnet10']
 model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
@@ -36,6 +35,11 @@ parser.add_argument("--num_chunk", type=int, default=0, help="which chunk to cer
 parser.add_argument('--uniform', action='store_true', default=False, help='certify with uniform distribution')
 
 args = parser.parse_args()
+
+if args.certify_method[0:8] == 'rotation' and args.sigma > 1:
+    args.sigma = 1
+    print("sigma above 1 for rotations is redundant (1 means +-Pi radians), setting sigma=1")
+
 
 # full path for output
 args.basedir = os.path.join('output/certify', args.experiment_name)

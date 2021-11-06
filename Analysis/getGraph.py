@@ -19,9 +19,9 @@ args = parser.parse_args()
 
 #change these as needed for current query
 models=["64pointnet"]#,"pointnet2","dgcnn","curvenet"]
-deformation="RotationY"
+deformation="RotationX"
 usingModelnet10 = False
-sigmas = [0.025,0.05,0.075,0.1,0.15,0.2,0.25,0.3,0.35,0.4]
+sigmas = [0.01,0.02,0.025,0.03,0.04,0.05,0.06,0.07]#,0.075,0.08,0.09,0.1,0.15,0.2,0.25,0.3,0.35,0.4][0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]#
 counter = 1
 base_path = "../output/3DcertifyComparison/"
 common_end = "/certification_chunk_1out_of1.csv"
@@ -116,20 +116,40 @@ for model in models:
             print('done!\n')
         
         #draw other papers points
-        if (model == "64pointnet" and deformation == "RotationZ"):
-            plt.plot(0.0523599,0.937,'ro')#3 degreees, 93.7%
+        if (model == "64pointnet" and deformation == "RotationZ" and args.envelope):
+            plt.plot(0.0523599,88/90,'ro')#3 degreees
             plt.plot(0.349066,0.967,'ro',label='3D certify')#20 degreees, 96.7%
             plt.plot(1.0472,0.957,'ro')#60 degrees, 95.7%
-        elif (model == "64pointnet" and deformation == "RotationX"):
-            plt.plot(0.0174533,88/90,'ro',label='3D certify')#1 degree, 97.7%
-        elif (model == "64pointnet" and deformation == "RotationY"):
+        elif (model == "64pointnet" and deformation == "RotationX" and args.envelope):
+            plt.plot(0.0174533,88/90,'ro',label='3D certify')#1 degree
+            plt.plot(0.0349066,86/90,'ro') #2 degree
+            plt.plot(0.0523599,86/90,'ro') #3 degree, 
+            plt.plot(0.0698132,86/90,'ro') #4 degree, 
+            plt.plot(0.0872665,84/90,'ro') #5 degree, 
+            plt.plot(0.10472,84/90,'ro')   #6 degree, 
+            plt.plot(0.122173,79/90,'ro')  #7 degree, 
+            plt.plot(0.139626,76/90,'ro')  #8 degree, 
+            plt.plot(0.174533,71/90,'ro')  #10 degree, 
+            #plt.plot(0.261799,50/90,'ro')  #15 degree, 
+        elif (model == "64pointnet" and deformation == "RotationY" and args.envelope):
             plt.plot(0.0174533,89/90,'ro',label='3D certify')#1 degree, 98.8%
+            plt.plot(0.0349066,89/90,'ro') #2 degree, 95.5%
+            plt.plot(0.0523599,89/90,'ro') #3 degree, 
+            plt.plot(0.0698132,88/90,'ro') #4 degree, 
+            plt.plot(0.0872665,86/90,'ro') #5 degree, 
+            plt.plot(0.10472,86/90,'ro')   #6 degree, 
+            plt.plot(0.122173,85/90,'ro')  #7 degree, 
+            plt.plot(0.139626,81/90,'ro')  #8 degree, 
+            plt.plot(0.174533,76/90,'ro')  #10 degree, 
+            #plt.plot(0.261799,50/90,'ro')  #15 degree, 
     except:
         print("unable to display {}".format(current_experiment))
     # Settings
     plt.title(model+" "+deformation+" certification")
     if (args.hypervolume):
         plt.xlabel('certified hypervolume')
+    elif deformation[:8]=="Rotation":
+        plt.xlabel('radians')
     else:
         plt.xlabel('certification radius')
     

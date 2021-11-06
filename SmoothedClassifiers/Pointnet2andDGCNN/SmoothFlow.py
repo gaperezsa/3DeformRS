@@ -332,7 +332,7 @@ class SmoothFlow(object):
         shearingMatrixs[:,2,:2] = shearingCoeff[:,0,:2]
         shearingMatrixs = shearingMatrixs.permute(0,2,1).float().to(self.device)
 
-        '''                     [[1         0       coefA   ],
+        '''                     [[1         0       CoefA   ],
             shearingMatrix =     [0         1       CoefB   ],
                                  [0         0       1       ]]
         '''
