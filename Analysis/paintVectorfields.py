@@ -7,8 +7,7 @@ certification_method_choices = ['rotationX','rotationY','rotationZ','translation
 
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--deformation", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of deforamtion to base the field upon')
-parser.add_argument('--arg1', type=int, default=1,help='First argument to be used as parameter in the deformation')
-parser.add_argument('--arg2', type=int, default=1,help='Second argument to be used as parameter in the deformation')
+parser.add_argument('--parameters', type=float, default=1,nargs='+',help='arguments to be used as parameter in the deformation')
 args = parser.parse_args()
 
 def PaintGaussianNoise():
@@ -84,6 +83,25 @@ def PaintZRot(angle):
 
     ax.quiver(x, y, z, u, v, w, length=0.1, normalize=True)
 
+    plt.show()
+
+def PaintTranslation(Xoffset,Yoffset,Zoffset):
+    ax = plt.figure().add_subplot(projection='3d')
+
+    # Make the grid
+    x, y, z = np.meshgrid(np.arange(-0.8, 1, 0.4),
+                        np.arange(-0.8, 1, 0.4),
+                        np.arange(-0.8, 1, 0.4))
+
+
+    u = Xoffset
+    v = Yoffset
+    w = Zoffset
+
+    ax.quiver(x, y, z, u, v, w, length=0.2, normalize=True)
+
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
 
 def PaintShearing(CoefA,CoefB):
@@ -194,18 +212,20 @@ def PaintStretching(Kbar):
 if args.deformation == 'gaussianNoise':
     PaintGaussianNoise()
 elif args.deformation == 'rotationX':
-    PaintXRot(args.arg1)
+    PaintXRot(args.parameters[0])
 elif args.deformation == 'rotationY':
-    PaintYRot(args.arg1)
+    PaintYRot(args.parameters[0])
 elif args.deformation == 'rotationZ':
-    PaintZRot(args.arg1)
+    PaintZRot(args.parameters[0])
+elif args.deformation == 'translation':
+    PaintTranslation(args.parameters[0],args.parameters[1],args.parameters[2])
 elif args.deformation == 'shearing':
-    PaintShearing(args.arg1,args.arg2)
+    PaintShearing(args.parameters[0],args.parameters[1])
 elif args.deformation == 'tapering':
-    PaintTapering(args.arg1,args.arg2)
+    PaintTapering(args.parameters[0],args.parameters[1])
 elif args.deformation == 'twisting':
-    PaintTwisting(args.arg1)
+    PaintTwisting(args.parameters[0])
 elif args.deformation == 'squeezing':
-    PaintSqueezing(args.arg1)
+    PaintSqueezing(args.parameters[0])
 elif args.deformation == 'stretching':
-    PaintStretching(args.arg1)
+    PaintStretching(args.parameters[0])
