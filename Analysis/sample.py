@@ -173,11 +173,11 @@ def _GenCloudShearing(x,perturbation):
     '''
     
     #Gaussian distribution with std deviation sigma
-    shearingCoeff = perturbation
+    shearingCoeff = torch.tensor(perturbation).float()
 
     #shearing is introducing the coefficients in the last column of the identity matrix and not changing the diagonal
     shearingMatrixs = torch.eye(3)
-    shearingMatrixs[2,:2] = shearingCoeff[0,:2]
+    shearingMatrixs[2,:2] = shearingCoeff[0:2]
     shearingMatrixs = shearingMatrixs.T.float()
 
     '''                     [[1        0       CoefA   ],
@@ -215,14 +215,14 @@ def _GenCloudTapering(x,perturbation):
     pointCloudShape = x.pos.shape[0] 
 
     #Gaussian distribution with std deviation sigma
-    TaperingCoeff = perturbation
+    TaperingCoeff = torch.tensor(perturbation).float()
     
     #preparing a,b and z to fit with the mask
     #same a,b for every 2*amountOfPointPerCloud because two positions in the diagonal of each matrix are gonna change
     #same z for every two positions
     z = x.pos[:, 2].repeat(2,1).T.flatten()
-    a = TaperingCoeff[:,0].repeat(2*pointCloudShape,1).T.flatten()
-    b = TaperingCoeff[:,1].repeat(2*pointCloudShape,1).T.flatten()
+    a = TaperingCoeff[0].repeat(2*pointCloudShape,1).T.flatten()
+    b = TaperingCoeff[1].repeat(2*pointCloudShape,1).T.flatten()
 
 
     boolMask = torch.tensor([[1,0,0],[0,1,0],[0,0,0]]).bool().repeat(pointCloudShape,1,1)
@@ -261,14 +261,14 @@ def _GenCloudTwisting(x,perturbation):
     pointCloudShape = x.pos.shape[0] 
 
     #Gaussian distribution with std deviation sigma
-    twistingCoeff = perturbation
+    twistingCoeff = torch.tensor(perturbation).float()
     
 
     #preparing alpha and z to fit with the mask
     #same alpha for every 4*amountOfPointPerCloud because 4 positions in the identity matrix are gonna change
     #same z for every 4 positions (4 position in this mask means a single point in the point cloud
     z = x.pos[:, 2].repeat(4,1).T.flatten()
-    alpha = twistingCoeff[:,0].repeat(4*pointCloudShape,1).T.flatten()
+    alpha = twistingCoeff[0].repeat(4*pointCloudShape,1).T.flatten()
 
     #create transformation matrixes
     boolMask = torch.tensor([[1,1,0],[1,1,0],[0,0,0]]).bool().repeat(pointCloudShape,1,1)
@@ -309,7 +309,7 @@ def _GenCloudSqueezing(x,perturbation):
     '''
 
     #Uniform between [-sigma, sigma]
-    Kbar = perturbation
+    Kbar = torch.tensor(perturbation).float()
 
     #transforming uniform distributed variable
     #Kbar=0 -> compressingCoeffK = 1     Identity transform
@@ -318,12 +318,12 @@ def _GenCloudSqueezing(x,perturbation):
     #Kbar=2 -> compressingCoeffK = 1/3   all x coordinates cut to a third
     #Kbar=-2 -> compressingCoeffK = 1/3   all x coordinates cut to a third
     #compressing on the x coordinate by a 1/(|Kbar|+1) ratio and stretching y,z accordingly so that barycenter and volume is preserved
-    compressingCoeffK = (1/(1+torch.abs(torch.from_numpy(Kbar)))).float()
+    compressingCoeffK = (1/(1+torch.abs(Kbar))).float()
 
     #preparing K and z to fit with the mask
     #same K for every three positions meaning one matrix during mask asignation, one matrix per one point cloud
-    K = compressingCoeffK[:,0].repeat(3,1).T.flatten()
-    divisor = (1 / torch.mul( compressingCoeffK[:,0] , torch.sqrt(compressingCoeffK[:,0]) ) ).repeat(3,1).T
+    K = compressingCoeffK[0].repeat(3,1).T.flatten()
+    divisor = (1 / torch.mul( compressingCoeffK[0] , torch.sqrt(compressingCoeffK[0]) ) ).repeat(3,1).T
     divisor[:,0] = 1
     divisor = divisor.flatten()
 
@@ -487,7 +487,7 @@ certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ'
 
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--sample_class", type=float, default=0 , help="0-39, which class to sample")
-parser.add_argument('--num_points', type=int, default=1024,help='num of points to use in case of curvenet, default 1024 recommended')
+parser.add_argument('--num_points', type=int, default=1024,help='num of points to use, default 1024 recommended')
 parser.add_argument("--data_path", type=str, default='../Pointnet2andDGCNN/Data/Modelnet40fp',help="path to dataset")
 parser.add_argument("--deformation_method", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--perturbation_amount", type=float, nargs='+',help="perturbation parameter, RotationX would only use 1, affine will use 12")
@@ -502,7 +502,7 @@ from torch_geometric.datasets import ModelNet
 import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 path = osp.join(osp.dirname(osp.realpath(__file__)), args.data_path)
-pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
+pre_transform, transform = T.NormalizeScale(), T.SamplePoints(args.num_points)
 print(path)
 test_dataset = ModelNet(path, '40', False, transform, pre_transform)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
@@ -534,7 +534,7 @@ def Transformer(deformation,x,perturbation):
         "affineNoTranslation": _GenCloudAffineNoTranslation,
         "affine"            : _GenCloudAffine,
     }
-    return switcher.get(deformation,"not a valid deforamtion with defined hypervolume")(x,perturbation)
+    return switcher.get(deformation,"not a valid deforamtion")(x,perturbation)
 
 PC = sample.pos[0:args.num_points].cpu().detach().numpy()
 write_ply(PC, '../output/samples/'+args.deformation_method+'/Original.ply')

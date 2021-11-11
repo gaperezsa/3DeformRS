@@ -3,7 +3,7 @@ import numpy as np
 import argparse
 from scipy.spatial.transform import Rotation
 
-certification_method_choices = ['rotationX','rotationY','rotationZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
+certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--deformation", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of deforamtion to base the field upon')
@@ -32,8 +32,8 @@ def PaintXRot(angle):
     ax = plt.figure().add_subplot(projection='3d')
 
     # Make the grid
-    x, y, z = np.meshgrid(np.arange(-0.8, 1, 0.2),
-                        np.arange(-0.8, 1, 0.2),
+    x, y, z = np.meshgrid(np.arange(-0.8, 1, 0.4),
+                        np.arange(-0.8, 1, 0.4),
                         np.arange(-0.8, 1, 0.4))
 
     # Make the direction data for the arrows
@@ -43,8 +43,10 @@ def PaintXRot(angle):
     v = (Matrix[1,0]*x + Matrix[1,1]*y + Matrix[1,2]*z)-y
     w = (Matrix[2,0]*x + Matrix[2,1]*y + Matrix[2,2]*z)-z
 
-    ax.quiver(x, y, z, u, v, w, length=0.1, normalize=True)
+    ax.quiver(x, y, z, u, v, w, length=0.9, normalize=False)
 
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
 
 def PaintYRot(angle):
@@ -81,7 +83,26 @@ def PaintZRot(angle):
     v = (Matrix[1,0]*x + Matrix[1,1]*y + Matrix[1,2]*z)-y
     w = (Matrix[2,0]*x + Matrix[2,1]*y + Matrix[2,2]*z)-z
 
-    ax.quiver(x, y, z, u, v, w, length=0.1, normalize=True)
+    ax.quiver(x, y, z, u, v, w, length=0.2, normalize=True)
+
+    plt.show()
+
+def PaintXZRot(angleX,angleZ):
+    ax = plt.figure().add_subplot(projection='3d')
+
+    # Make the grid
+    x, y, z = np.meshgrid(np.arange(-0.8, 1, 0.4),
+                        np.arange(-0.8, 1, 0.4),
+                        np.arange(-0.8, 1, 0.4))
+
+    # Make the direction data for the arrows
+    Matrix = Rotation.from_euler('xyz', (angleX,0,angleZ)).as_matrix()
+
+    u = (Matrix[0,0]*x + Matrix[0,1]*y + Matrix[0,2]*z)-x
+    v = (Matrix[1,0]*x + Matrix[1,1]*y + Matrix[1,2]*z)-y
+    w = (Matrix[2,0]*x + Matrix[2,1]*y + Matrix[2,2]*z)-z
+
+    ax.quiver(x, y, z, u, v, w, length=0.2, normalize=True)
 
     plt.show()
 
@@ -122,8 +143,10 @@ def PaintShearing(CoefA,CoefB):
     v = (Matrix[1,0]*x + Matrix[1,1]*y + Matrix[1,2]*z)-y
     w = (Matrix[2,0]*x + Matrix[2,1]*y + Matrix[2,2]*z)-z
 
-    ax.quiver(x, y, z, u, v, w, length=0.2)
+    ax.quiver(x, y, z, u, v, w, length=0.8)
 
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
 
 def PaintTapering(CoefA,CoefB):
@@ -131,7 +154,7 @@ def PaintTapering(CoefA,CoefB):
 
     # Make the grid
     x, y, z = np.meshgrid(np.arange(-0.8, 1, 0.2),
-                        np.arange(-0.8, 1, 0.2),
+                        np.arange(-0.8, 1, 0.4),
                         np.arange(-0.8, 1, 0.4))
 
     # Make the direction data for the arrows
@@ -139,8 +162,9 @@ def PaintTapering(CoefA,CoefB):
     v = ((0.5*np.square(CoefA)*z+CoefB*z+1)*y )-y
     w = 0
 
-    ax.quiver(x, y, z, u, v, w, length=0.2)
-
+    ax.quiver(x, y, z, u, v, w, length=0.4)
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
 
 def PaintTwisting(alpha):
@@ -156,8 +180,9 @@ def PaintTwisting(alpha):
     v = (-np.sin(alpha*z)*x + np.cos(alpha*z)*y)-y
     w = 0
 
-    ax.quiver(x, y, z, u, v, w, length=0.2)
-
+    ax.quiver(x, y, z, u, v, w, length=0.4)
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
 
 def PaintSqueezing(Kbar):
@@ -168,7 +193,7 @@ def PaintSqueezing(Kbar):
 
     # Make the grid
     x, y, z = np.meshgrid(np.arange(-0.8, 1, 0.2),
-                        np.arange(-0.8, 1, 0.2),
+                        np.arange(-0.8, 1, 0.4),
                         np.arange(-0.8, 1, 0.4))
 
     # Make the direction data for the arrows
@@ -180,8 +205,10 @@ def PaintSqueezing(Kbar):
     u = (Matrix[0,0]*x + Matrix[0,1]*y + Matrix[0,2]*z)-x
     v = (Matrix[1,0]*x + Matrix[1,1]*y + Matrix[1,2]*z)-y
     w = (Matrix[2,0]*x + Matrix[2,1]*y + Matrix[2,2]*z)-z
-    ax.quiver(x, y, z, u, v, w, length=0.2)
+    ax.quiver(x, y, z, u, v, w, length=0.4)
 
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
 
 def PaintStretching(Kbar):
@@ -217,6 +244,8 @@ elif args.deformation == 'rotationY':
     PaintYRot(args.parameters[0])
 elif args.deformation == 'rotationZ':
     PaintZRot(args.parameters[0])
+elif args.deformation == 'rotationXZ':
+    PaintXZRot(args.parameters[0],args.parameters[1])
 elif args.deformation == 'translation':
     PaintTranslation(args.parameters[0],args.parameters[1],args.parameters[2])
 elif args.deformation == 'shearing':

@@ -5,6 +5,11 @@ import argparse
 import math
 import matplotlib.pyplot as plt
 import multiprocessing
+import seaborn as sns
+sns.set_theme()
+sns.set_style("darkgrid")
+
+
 '''
 This program will be able to retrieve the graph for a list of models, running some kind of deformation and given the sigmas interested in.
 This is all asuming that when experiments where run, the convention {model}{deformation}{dataset spec if needed}{sigma} was followed
@@ -19,10 +24,10 @@ args = parser.parse_args()
 
 #change these as needed for current query
 models=["64pointnet"]#,"pointnet2","dgcnn","curvenet"]
-deformation="RotationX"
+deformation="RotationZ"
 usingModelnet10 = False
-sigmas = [0.01,0.02,0.025,0.03,0.04,0.05,0.06,0.07]#,0.075,0.08,0.09,0.1,0.15,0.2,0.25,0.3,0.35,0.4][0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]#
-counter = 1
+sigmas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]#[0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3]
+counter = 0
 base_path = "../output/3DcertifyComparison/"
 common_end = "/certification_chunk_1out_of1.csv"
 current_experiment = ""
@@ -59,8 +64,10 @@ def DomainTransformer(deformation,radius):
     }
     return switcher.get(deformation,"not a valid deforamtion with defined hypervolume")(radius)
 
+axes=[1]
+fig,axes[0] = plt.subplots(1,len(models),figsize=(10, 4),sharey=True)
+fig.suptitle("64 points pointnet "+deformation+" certification")
 for model in models:
-    plt.subplot(rows, columns, counter)
     try:
         if not usingModelnet10:
             current_experiments = [model+deformation+str(sigma) for sigma in sigmas]
@@ -87,15 +94,12 @@ for model in models:
                 plottingDomain = Xdomain
 
             if (args.less_labels):
-                label = '\u03C3='+str(sigma) if showLegendCounter%2==0 else '_\u03C3='+str(sigma) #those labels starting with _ are ignored by the automatic legend
+                label = '\u03C3='+str(sigma) if showLegendCounter%2==1 else '_\u03C3='+str(sigma) #those labels starting with _ are ignored by the automatic legend
                 showLegendCounter += 1
             else :
                 label = '\u03C3='+str(sigma)
 
-            if args.envelope:
-                plt.plot(plottingDomain.tolist(), Yvalue,'--',label=label)
-            else:
-                plt.plot(plottingDomain.tolist(), Yvalue,label=label)
+            sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(),y=Yvalue,label=label)
 
         if args.envelope:
             print('calculating envelope...')
@@ -112,51 +116,73 @@ for model in models:
                 plottingDomain = DomainTransformer(deformation,EnvelopeXdomain)
             else:
                 plottingDomain = EnvelopeXdomain
-            plt.plot(plottingDomain.tolist(), EnvelopeYvalues,label='envelope')
+
+            sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(), y=EnvelopeYvalues,label='envelope')
+            #plt.plot(plottingDomain.tolist(), EnvelopeYvalues,label='envelope')
             print('done!\n')
         
         #draw other papers points
         if (model == "64pointnet" and deformation == "RotationZ" and args.envelope):
-            plt.plot(0.0523599,88/90,'ro')#3 degreees
-            plt.plot(0.349066,0.967,'ro',label='3D certify')#20 degreees, 96.7%
-            plt.plot(1.0472,0.957,'ro')#60 degrees, 95.7%
+            axes[counter].plot(0.0523599,88/90,'ro')#3 degreees
+            axes[counter].plot(0.349066,0.967,'ro',label='3D certify')#20 degreees, 96.7%
+            axes[counter].plot(1.0472,0.957,'ro')#60 degrees, 95.7%
         elif (model == "64pointnet" and deformation == "RotationX" and args.envelope):
-            plt.plot(0.0174533,88/90,'ro',label='3D certify')#1 degree
-            plt.plot(0.0349066,86/90,'ro') #2 degree
-            plt.plot(0.0523599,86/90,'ro') #3 degree, 
-            plt.plot(0.0698132,86/90,'ro') #4 degree, 
-            plt.plot(0.0872665,84/90,'ro') #5 degree, 
-            plt.plot(0.10472,84/90,'ro')   #6 degree, 
-            plt.plot(0.122173,79/90,'ro')  #7 degree, 
-            plt.plot(0.139626,76/90,'ro')  #8 degree, 
-            plt.plot(0.174533,71/90,'ro')  #10 degree, 
+            axes[counter].plot(0.0174533,88/90,'ro',label='3D certify')#1 degree
+            axes[counter].plot(0.0349066,86/90,'ro') #2 degree
+            axes[counter].plot(0.0523599,86/90,'ro') #3 degree, 
+            axes[counter].plot(0.0698132,86/90,'ro') #4 degree, 
+            axes[counter].plot(0.0872665,84/90,'ro') #5 degree, 
+            axes[counter].plot(0.10472,84/90,'ro')   #6 degree, 
+            axes[counter].plot(0.122173,79/90,'ro')  #7 degree, 
+            axes[counter].plot(0.139626,76/90,'ro')  #8 degree, 
+            axes[counter].plot(0.174533,71/90,'ro')  #10 degree, 
             #plt.plot(0.261799,50/90,'ro')  #15 degree, 
         elif (model == "64pointnet" and deformation == "RotationY" and args.envelope):
-            plt.plot(0.0174533,89/90,'ro',label='3D certify')#1 degree, 98.8%
-            plt.plot(0.0349066,89/90,'ro') #2 degree, 95.5%
-            plt.plot(0.0523599,89/90,'ro') #3 degree, 
-            plt.plot(0.0698132,88/90,'ro') #4 degree, 
-            plt.plot(0.0872665,86/90,'ro') #5 degree, 
-            plt.plot(0.10472,86/90,'ro')   #6 degree, 
-            plt.plot(0.122173,85/90,'ro')  #7 degree, 
-            plt.plot(0.139626,81/90,'ro')  #8 degree, 
-            plt.plot(0.174533,76/90,'ro')  #10 degree, 
-            #plt.plot(0.261799,50/90,'ro')  #15 degree, 
+            axes[counter].plot(0.0174533,89/90,'ro',label='3D certify')#1 degree, 98.8%
+            axes[counter].plot(0.0349066,89/90,'ro') #2 degree, 95.5%
+            axes[counter].plot(0.0523599,89/90,'ro') #3 degree, 
+            axes[counter].plot(0.0698132,88/90,'ro') #4 degree, 
+            axes[counter].plot(0.0872665,86/90,'ro') #5 degree, 
+            axes[counter].plot(0.10472,86/90,'ro')   #6 degree, 
+            axes[counter].plot(0.122173,85/90,'ro')  #7 degree, 
+            axes[counter].plot(0.139626,81/90,'ro')  #8 degree, 
+            axes[counter].plot(0.174533,76/90,'ro')  #10 degree, 
+            #plt.plot(0.261799,50/90,'ro')  #15 degree,
+        elif (model == "32pointnet" and deformation == "RotationZ" and args.envelope):
+            axes[counter].plot(0.0523599,0.94,'ro',label='3D certify')#3 degreees
+        elif (model == "128pointnet" and deformation == "RotationZ" and args.envelope):
+            axes[counter].plot(0.0523599,0.811,'ro',label='3D certify')#3 degreees
+        elif (model == "256pointnet" and deformation == "RotationZ" and args.envelope):
+            axes[counter].plot(0.0523599,0.667,'ro',label='3D certify')#3 degreees
+        elif (model == "512pointnet" and deformation == "RotationZ" and args.envelope):
+            axes[counter].plot(0.0523599,0.494,'ro',label='3D certify')#3 degreees
+        elif (model == "1024pointnet" and deformation == "RotationZ" and args.envelope):
+            axes[counter].plot(0.0523599,0.371,'ro',label='3D certify')#3 degreees
     except:
         print("unable to display {}".format(current_experiment))
-    # Settings
-    plt.title(model+" "+deformation+" certification")
-    if (args.hypervolume):
-        plt.xlabel('certified hypervolume')
-    elif deformation[:8]=="Rotation":
-        plt.xlabel('radians')
-    else:
-        plt.xlabel('certification radius')
     
-    plt.ylabel('certified accuracy')
-    plt.ylim([0,1])
-    plt.legend(loc='upper right', bbox_to_anchor=(1, 1))
-    plt.grid()
+
+    # Settings, change these to your liking
+    #axes[counter].set_title(str(points[counter])+' points')
+    if (args.hypervolume):
+        axes[counter].set_xlabel('certified hypervolume')
+    elif deformation[:8]=="Rotation":
+        axes[counter].set_xlabel('radians')
+    else:
+        axes[counter].set_xlabel('certification radius')
+
+    if args.envelope:
+        for line in axes[counter].lines[0:len(sigmas)]:
+            line.set_linestyle("--")
+
+    axes[counter].set_ylabel('certified accuracy')
+    axes[counter].set_ylim([0,1])
+    try:
+        axes[counter].get_legend().remove()
+    except:
+        print("warning removing labels")
+    #plt.grid()
     counter+=1
 
+axes[counter-1].legend(loc='upper right', bbox_to_anchor=(1, 1),framealpha=0.5)
 plt.show()
