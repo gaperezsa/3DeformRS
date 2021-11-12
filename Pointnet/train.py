@@ -211,14 +211,16 @@ for epoch in range(settings.epochs):
     )
 
     if test_accuracy >= bestTestAcc:
-            torch.save(
-                        {
-                            'epoch': epoch + 1,
-                            'model_param': model.state_dict(),
-                            'optimizer': optimizer.state_dict(),
-                            'scheduler': scheduler.state_dict(),
-                        }, f'{settings.out}/FinalModel.pth.tar')
-            bestTestAcc = test_accuracy
+        torch.save(
+            {
+                'epoch': epoch + 1,
+                'model_param': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'scheduler': scheduler.state_dict(),
+            }, f'{settings.out}/FinalModel.pth.tar'
+        )
+        bestTestAcc = test_accuracy
+    print("best test acc: "+str(bestTestAcc)+", achieved on epoch: "+str(epoch))
 
     writer.add_scalar('accuracy/train', train_correct / train_amount, epoch)
     writer.add_scalar('loss/train', train_loss / train_amount, epoch)

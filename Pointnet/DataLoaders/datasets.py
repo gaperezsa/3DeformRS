@@ -68,7 +68,6 @@ from torch.utils.data.dataset import Dataset
 import os
 import torch
 import collections
-from PIL import Image
 
 def collate_fn(batch):
     r"""Puts each data field into a tensor with outer dimension batch size"""

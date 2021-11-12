@@ -6,6 +6,14 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Sequential as Seq, Dropout, Linear as Lin
 from torch_geometric.datasets import ModelNet
+
+import sys
+import inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+from DataLoaders import ScanobjectDataset
+
 import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import DynamicEdgeConv, global_max_pool
@@ -99,11 +107,13 @@ def print_to_log(text, txt_file_path):
 
 if __name__ == '__main__':
 
-    dataset_choices = ['modelnet40','modelnet10']
+    dataset_choices = ['modelnet40','modelnet10','scanobjectnn']
     
     #arguments passed
     parser = ArgumentParser(description='PyTorch code for GeoCer')
     parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
+    parser.add_argument("--data_dir", type=str, default='')
+    parser.add_argument("--num_points", type=int, default=1024,help="amount of points to sample per pointcloud")
     parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train (default: 200)')
     args = parser.parse_args()
@@ -143,6 +153,7 @@ if __name__ == '__main__':
                                 num_workers=6)
         test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False,
                                 num_workers=6)
+        num_classes = train_dataset.num_classes
 
     elif args.dataset == 'modelnet10':
         #dataset and loaders
@@ -155,10 +166,25 @@ if __name__ == '__main__':
                                 num_workers=6)
         test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False,
                                 num_workers=6)
+        num_classes = train_dataset.num_classes
+    
+    elif args.dataset == 'scanobjectnn':
+        train_dataset = ScanobjectDataset.ScanObjectNN(args.data_dir, 'train',  args.num_points,
+                                variant='obj_only', dset_norm="inf")
+        test_dataset = ScanobjectDataset.ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                variant='obj_only', dset_norm="inf")
+        classes = train_dataset.classes
+        num_classes = len(classes)
+
+        train_loader = DataLoader(train_dataset, batch_size=32,
+                                shuffle=True, num_workers=6, drop_last=True)
+
+        test_loader = DataLoader(train_dataset, batch_size=32,
+                                shuffle=False, num_workers=6)
 
     #model and optimizer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = Net(train_dataset.num_classes, k=20).to(device)
+    model = Net(num_classes, k=20).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 

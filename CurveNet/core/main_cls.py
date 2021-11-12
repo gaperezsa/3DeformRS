@@ -18,7 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
-from data import ModelNet40
+from data import ModelNet40,ScanObjectNN,collate_fn
 from models.curvenet_cls import CurveNet
 import numpy as np
 from torch.utils.data import DataLoader
@@ -48,10 +48,27 @@ def _init_():
     os.system('cp models/curvenet_cls.py ../checkpoints/'+args.exp_name+'/curvenet_cls.py.backup')
 
 def train(args, io):
-    train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points), num_workers=8,
-                              batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=8,
-                             batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+    if args.dataset == 'modelnet40':
+        train_loader = DataLoader(ModelNet40(partition='train', num_points=args.num_points), num_workers=args.num_workers,
+                                batch_size=args.batch_size, shuffle=True, drop_last=True)
+        test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=args.num_workers,
+                                batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+
+    elif args.dataset == 'scanobjectnn':
+        train_data = ScanObjectNN(args.data_dir, 'train',  args.num_points,
+                                variant='obj_only', dset_norm="inf")
+        test_data = ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                variant='obj_only', dset_norm="inf")
+        classes = train_data.classes
+        num_classes = len(classes)
+
+        train_loader = DataLoader(train_data, batch_size=args.batch_size,
+                                shuffle=True, num_workers=args.num_workers,collate_fn=collate_fn, drop_last=True)
+
+        test_loader = DataLoader(test_data, batch_size=args.batch_size,
+                                shuffle=False, num_workers=args.num_workers,collate_fn=collate_fn)
+
+    
 
     device = torch.device("cuda" if args.cuda else "cpu")
     io.cprint("Let's use" + str(torch.cuda.device_count()) + "GPUs!")
@@ -140,13 +157,27 @@ def train(args, io):
         outstr = 'Test %d, loss: %.6f, test acc: %.6f' % (epoch, test_loss*1.0/count, test_acc)
         io.cprint(outstr)
         if test_acc >= best_test_acc:
+            io.cprint('saving this model, this test acc: {} is better than the previous best: {}'.format(test_acc,best_test_acc))
             best_test_acc = test_acc
             torch.save(model.state_dict(), '../checkpoints/%s/models/model.t7' % args.exp_name)
+        torch.save(model.state_dict(), '../checkpoints/%s/models/latestModel.t7' % args.exp_name)
+        if epoch == 147:
+            torch.save(model.state_dict(), '../checkpoints/%s/models/potentialModel.t7' % args.exp_name)
         io.cprint('best: %.3f' % best_test_acc)
 
 def test(args, io):
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),
-                             batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+    if args.dataset == 'modelnet40':
+        test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=args.num_workers,
+                                batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+
+    elif args.dataset == 'scanobjectnn':
+        test_data = ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                variant='obj_only', dset_norm="inf")
+        classes = test_data.classes
+        num_classes = len(classes)
+
+        test_loader = DataLoader(test_data, batch_size=args.batch_size,
+                                shuffle=False, num_workers=args.num_workers,collate_fn=collate_fn)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -182,9 +213,13 @@ if __name__ == "__main__":
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
     parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
-                        choices=['modelnet40'])
+                        choices=['modelnet40','scanobjectnn'])
+    parser.add_argument('--data_dir', type=str, default='CurveNet/data/',
+                        help='path to raw data')
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
+    parser.add_argument('--num_workers', type=int, default=0,
+                        help='workers for dataloaders)')
     parser.add_argument('--test_batch_size', type=int, default=16, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
