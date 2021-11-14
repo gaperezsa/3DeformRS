@@ -7,7 +7,7 @@
 #SBATCH --chdir=/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/
 #SBATCH -o logs/%x_%A_%a.out
 #SBATCH -e logs/%x_%A_%a.err
-#SBATCH --array=1-19
+#SBATCH --array=1-2
 #SBATCH --constraint=v100
 ##SBATCH --account=conf-cvpr-2021.11.23-ghanembs
 

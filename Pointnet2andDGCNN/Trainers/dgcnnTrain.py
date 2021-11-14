@@ -176,11 +176,11 @@ if __name__ == '__main__':
         classes = train_dataset.classes
         num_classes = len(classes)
 
-        train_loader = DataLoader(train_dataset, batch_size=32,
-                                shuffle=True, num_workers=6, drop_last=True)
+        train_loader = DataLoader(train_dataset, batch_size=64,
+                                shuffle=True, num_workers=8)
 
-        test_loader = DataLoader(train_dataset, batch_size=32,
-                                shuffle=False, num_workers=6)
+        test_loader = DataLoader(test_dataset, batch_size=64,
+                                shuffle=False, num_workers=8)
 
     #model and optimizer
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -203,10 +203,10 @@ if __name__ == '__main__':
     for epoch in range(1, args.epochs):
         loss = train(epoch)
         test_acc = test(test_loader)
-        print('Epoch {:03d}, Loss: {:.4f}, Test: {:.4f}'.format(
+        print('Epoch {:03d}, TrainLoss: {:.4f}, TestAcc: {:.4f}'.format(
             epoch, loss, test_acc))
-        scheduler.step()
         if test_acc >= bestTestAcc:
+            print("saving this model, current test_acc: {} better than previous best: {}".format(test_acc,bestTestAcc))
             torch.save(
                         {
                             'epoch': epoch + 1,
@@ -215,4 +215,6 @@ if __name__ == '__main__':
                             'scheduler': scheduler.state_dict(),
                         }, f'{output_path}/FinalModel.pth.tar')
             bestTestAcc = test_acc
+        scheduler.step()
+        
         
