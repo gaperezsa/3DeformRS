@@ -1,0 +1,16 @@
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.01 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.01
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.02 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.02
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.03 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.03
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.04 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.04
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.06 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.06
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.07 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.07
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.08 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.08
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.09 --certify_method rotationX --uniform --experiment_name 64pointnetRotationX0.09
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.01 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.01
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.02 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.02
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.03 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.03
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.04 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.04
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.06 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.06
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.07 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.07
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.08 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.08
+CUDA_VISIBLE_DEVICES=0 python3 Compare3DCertify.py --sigma 0.09 --certify_method rotationY --uniform --experiment_name 64pointnetRotationY0.09

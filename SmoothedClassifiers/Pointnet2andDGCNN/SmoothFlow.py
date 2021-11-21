@@ -332,7 +332,7 @@ class SmoothFlow(object):
         shearingMatrixs[:,2,:2] = shearingCoeff[:,0,:2]
         shearingMatrixs = shearingMatrixs.permute(0,2,1).float().to(self.device)
 
-        '''                     [[1         0       coefA   ],
+        '''                     [[1         0       CoefA   ],
             shearingMatrix =     [0         1       CoefB   ],
                                  [0         0       1       ]]
         '''
@@ -417,7 +417,7 @@ class SmoothFlow(object):
 
     def _GenCloudTwisting(self, x, N,counter):
         ''' This function returns N sheared versions of the pointcloud x
-            shearing will be apllied on the x and y coordinate keeping z coordinate intact
+            twisting will be apllied on the x and y coordinate keeping z coordinate intact
             x: pytorch geometric Batch type object containing the info of a single point_cloud_shape
             N: int 
             counter: int just to cehck if the original pointcloud should be conserved

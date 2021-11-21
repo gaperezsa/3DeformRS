@@ -8,9 +8,8 @@ from time import time
 import datetime
 import os
 import math
-from torchvision.models.resnet import resnet50
 
-dataset_choices = ['modelnet40','modelnet10']
+dataset_choices = ['modelnet40','modelnet10','scanobjectnn']
 model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
 certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
@@ -18,6 +17,7 @@ certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ'
 
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
+parser.add_argument("--data_dir", default='Data/ScanObjectNN',help="where is the dataset (for example scanobject)")
 parser.add_argument("--model", type=str, choices=model_choices, help="model name")
 parser.add_argument('--num_points', type=int, default=1024,help='num of points to use in case of curvenet, default 1024 recommended')
 parser.add_argument('--max_features', type=int, default=1024,help='max features in Pointnet inner layers')
@@ -36,6 +36,11 @@ parser.add_argument("--num_chunk", type=int, default=0, help="which chunk to cer
 parser.add_argument('--uniform', action='store_true', default=False, help='certify with uniform distribution')
 
 args = parser.parse_args()
+
+if args.certify_method[0:8] == 'rotation' and args.sigma > 1:
+    args.sigma = 1
+    print("sigma above 1 for rotations is redundant (1 means +-Pi radians), setting sigma=1")
+
 
 # full path for output
 args.basedir = os.path.join('output/certify', args.experiment_name)
@@ -79,6 +84,7 @@ if __name__ == "__main__":
         import torch_geometric.transforms as T
         from torch_geometric.data import DataLoader
         from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow
+        from Pointnet2andDGCNN.DataLoaders import ScanobjectDataset
 
         if args.dataset == 'modelnet40':
             
@@ -91,14 +97,6 @@ if __name__ == "__main__":
 
 
             num_classes = 40
-            #model and optimizer
-            base_classifier = Net(num_classes).to(device)
-            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
-
-            #loadTrainedModel
-            checkpoint = torch.load(args.base_classifier_path)
-            base_classifier.load_state_dict(checkpoint['model_param'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
 
         elif args.dataset == 'modelnet10':
             
@@ -111,14 +109,24 @@ if __name__ == "__main__":
 
 
             num_classes = 10
-            #model and optimizer           
-            base_classifier = Net(num_classes).to(device)
-            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
 
-            #loadTrainedModel
-            checkpoint = torch.load(args.base_classifier_path)
-            base_classifier.load_state_dict(checkpoint['model_param'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
+        elif args.dataset == 'scanobjectnn':
+            test_dataset = ScanobjectDataset.ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                    variant='obj_only', dset_norm="inf")
+            classes = test_dataset.classes
+            num_classes = len(classes)
+
+            test_loader = DataLoader(test_dataset, batch_size=1,
+                                    shuffle=False, num_workers=0)
+        
+        #model and optimizer
+        base_classifier = Net(num_classes).to(device)
+        optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
+
+        #loadTrainedModel
+        checkpoint = torch.load(args.base_classifier_path)
+        base_classifier.load_state_dict(checkpoint['model_param'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
 
     elif args.model == 'dgcnn':
         from Pointnet2andDGCNN.Trainers.dgcnnTrain import Net
@@ -126,6 +134,7 @@ if __name__ == "__main__":
         import torch_geometric.transforms as T
         from torch_geometric.data import DataLoader
         from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow
+        from Pointnet2andDGCNN.DataLoaders import ScanobjectDataset
 
         if args.dataset == 'modelnet40':
 
@@ -136,16 +145,6 @@ if __name__ == "__main__":
             test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False,num_workers=0)
 
             num_classes = 40
-            #model and optimizer
-            base_classifier = Net(num_classes, k=20).to(device)
-            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-
-            #loadTrainedModel
-            checkpoint = torch.load(args.base_classifier_path)
-            base_classifier.load_state_dict(checkpoint['model_param'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            scheduler.load_state_dict(checkpoint['scheduler'])
 
         elif args.dataset == 'modelnet10':
 
@@ -156,16 +155,26 @@ if __name__ == "__main__":
             test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False,num_workers=0)
 
             num_classes = 10
-            #model and optimizer
-            base_classifier = Net(num_classes, k=20).to(device)
-            optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+        
+        elif args.dataset == 'scanobjectnn':
+            test_dataset = ScanobjectDataset.ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                    variant='obj_only', dset_norm="inf")
+            classes = test_dataset.classes
+            num_classes = len(classes)
 
-            #loadTrainedModel
-            checkpoint = torch.load(args.base_classifier_path)
-            base_classifier.load_state_dict(checkpoint['model_param'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            scheduler.load_state_dict(checkpoint['scheduler'])
+            test_loader = DataLoader(test_dataset, batch_size=1,
+                                    shuffle=False, num_workers=0)
+        
+        #model and optimizer
+        base_classifier = Net(num_classes, k=20).to(device)
+        optimizer = torch.optim.Adam(base_classifier.parameters(), lr=0.001)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+
+        #loadTrainedModel
+        checkpoint = torch.load(args.base_classifier_path)
+        base_classifier.load_state_dict(checkpoint['model_param'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
     
     elif args.model == 'curvenet':
         
@@ -174,7 +183,7 @@ if __name__ == "__main__":
         import torch.nn.functional as F
         import torch.optim as optim
         from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
-        from CurveNet.core.data import ModelNet40
+        from CurveNet.core.data import ModelNet40,ScanObjectNN,collate_fn
         from CurveNet.core.models.curvenet_cls import CurveNet
         import numpy as np
         from torch.utils.data import DataLoader
@@ -188,14 +197,23 @@ if __name__ == "__main__":
 
             num_classes = 40
 
-            #declare and load pretrained model
-            base_classifier = CurveNet().to(device)
-            base_classifier = nn.DataParallel(base_classifier)
-            base_classifier.load_state_dict(torch.load(args.base_classifier_path))
-            base_classifier.eval()
-
         elif args.dataset == 'modelnet10':
             raise NotImplementedError
+        
+        elif args.dataset == 'scanobjectnn':
+            test_dataset = ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                    variant='obj_only', dset_norm="inf")
+            classes = test_dataset.classes
+            num_classes = len(classes)
+
+            test_loader = DataLoader(test_dataset, batch_size=1,
+                                    shuffle=False, num_workers=0,collate_fn=collate_fn)
+        
+        #declare and load pretrained model
+        base_classifier = CurveNet().to(device)
+        base_classifier = nn.DataParallel(base_classifier)
+        base_classifier.load_state_dict(torch.load(args.base_classifier_path))
+        base_classifier.eval()
     
     elif args.model == 'pointnet':
         
@@ -222,38 +240,49 @@ if __name__ == "__main__":
                 num_workers=0
             )
             
-            num_classes = 40
+            num_classes = test_data.num_classes
 
-            base_classifier = PointNet(
+            
+
+        elif args.dataset == 'modelnet10':
+            raise NotImplementedError
+        
+        elif args.dataset == 'scanobjectnn':
+            test_dataset = datasets.ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                    variant='obj_only', dset_norm="inf")
+            classes = test_dataset.classes
+            num_classes = len(classes)
+
+            test_loader = DataLoader(test_dataset, batch_size=1,
+                                    shuffle=False, num_workers=0,collate_fn=datasets.collate_fn)
+                    
+        base_classifier = PointNet(
                 number_points=args.num_points,
-                num_classes=test_data.num_classes,
+                num_classes=num_classes,
                 max_features=args.max_features,
                 pool_function='max',
                 transposed_input= True
             )
-            base_classifier = base_classifier.to(device)
+        base_classifier = base_classifier.to(device)
 
-            objective = nn.CrossEntropyLoss()
-            optimizer = optim.Adam(base_classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
-            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
+        objective = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(base_classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
 
-            #loadTrainedModel
+        #loadTrainedModel
+        try:
+            checkpoint = torch.load(args.base_classifier_path)
+            base_classifier.load_state_dict(checkpoint['model_param'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            scheduler.load_state_dict(checkpoint['scheduler'])
+        except:
+            #before saying there is no model check if it is the 3d certify authors pretrained model
             try:
-                checkpoint = torch.load(args.base_classifier_path)
-                base_classifier.load_state_dict(checkpoint['model_param'])
-                optimizer.load_state_dict(checkpoint['optimizer'])
-                scheduler.load_state_dict(checkpoint['scheduler'])
+                base_classifier.load_state_dict(torch.load(args.base_classifier_path))
             except:
-                #before saying there is no model check if it is the 3d certify authors pretrained model
-                try:
-                    base_classifier.load_state_dict(torch.load(args.base_classifier_path))
-                except:
-                    print('no pretrained model found')
-            
-            base_classifier.eval()
-
-        elif args.dataset == 'modelnet10':
-            raise NotImplementedError
+                print('no pretrained model found')
+        
+        base_classifier.eval()
         
     else:
         raise Exception("Undefined model!") 

@@ -17,10 +17,12 @@ from tqdm import tqdm
 
 from DataLoaders import datasets
 from model import PointNet
+datasetChoices = ['modelnet40','scanobjectnn']
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_name', type=str, required=True, help='path of output directory')
-parser.add_argument('--dataset', type=str, default='modelnet40', help='the dataset to use', choices=['modelnet40'])
+parser.add_argument('--experiment_name', type=str, required=True, help='willbe used as the name of the output dir')
+parser.add_argument('--dataset', type=str, default='modelnet40', help='the dataset to use', choices=datasetChoices)
+parser.add_argument('--data_dir', type=str, default='Data/', help='path to the raw data')
 parser.add_argument('--batch_size', type=int, default=128, help='mini-batch size')
 parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--num_points', type=int, default=1024, help='number of points per point cloud')
@@ -34,7 +36,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='optimizer learning 
 parser.add_argument('--max_features', type=int, default=1024, help='the number of features for max pooling')
 parser.add_argument('--pooling', choices=['max', 'avg', 'sum'], default='max', help='global pooling function')
 #parser.add_argument('--domain', choices=['box', 'face'], default='box', help='The attack model domain')
-parser.add_argument('--rotation', choices=['none', 'z', 'so3'], default='z', help='Axis for rotation augmentation')
+parser.add_argument('--rotation', choices=['none', 'z', 'so3'], default='z', help='Axis for rotation augmentation in modelnet40')
 
 settings = parser.parse_args()
 
@@ -69,41 +71,59 @@ logger.info(settings)
 writer = SummaryWriter(log_dir=os.path.join('tensorboard/', settings.experiment_name))
 
 
-train_data = datasets.modelnet40(num_points=settings.num_points, split='train', rotate=settings.rotation)
-test_data = datasets.modelnet40(num_points=settings.num_points, split='test', rotate='none')
 
-train_loader = DataLoader(
-    dataset=train_data,
-    batch_size=settings.batch_size,
-    shuffle=True,
-    num_workers=settings.num_workers
-)
-test_loader = DataLoader(
-    dataset=test_data,
-    batch_size=settings.batch_size,
-    shuffle=False,
-    num_workers=settings.num_workers
-)
+if settings.dataset == 'modelnet40':
+    train_data = datasets.modelnet40(num_points=settings.num_points, split='train', rotate=settings.rotation)
+    test_data = datasets.modelnet40(num_points=settings.num_points, split='test', rotate='none')
 
-print("Train Size: ", len(train_data))
-print("Test Size: ", len(test_data))
-print("Total Size: ", len(test_data) + len(train_data))
+    num_classes = train_data.num_classes
 
-distribution = np.zeros(40, dtype=int)
-for sample in train_data:
-    _, _, label = sample
-    distribution[label.item()] += 1
-print(distribution)
+    train_loader = DataLoader(
+        dataset=train_data,
+        batch_size=settings.batch_size,
+        shuffle=True,
+        num_workers=settings.num_workers
+    )
+    test_loader = DataLoader(
+        dataset=test_data,
+        batch_size=settings.batch_size,
+        shuffle=False,
+        num_workers=settings.num_workers
+    )
+
+    print("Train Size: ", len(train_data))
+    print("Test Size: ", len(test_data))
+    print("Total Size: ", len(test_data) + len(train_data))
+
+    distribution = np.zeros(40, dtype=int)
+    for sample in train_data:
+        _, _, label = sample
+        distribution[label.item()] += 1
+    print(distribution)
+
+elif settings.dataset == 'scanobjectnn':
+    train_data = datasets.ScanObjectNN(settings.data_dir, 'train',  settings.num_points,
+                              variant='obj_only', dset_norm="inf")
+    test_data = datasets.ScanObjectNN(settings.data_dir, 'test',  settings.num_points,
+                            variant='obj_only', dset_norm="inf")
+    classes = train_data.classes
+    num_classes = len(classes)
+
+    train_loader = DataLoader(train_data, batch_size=settings.batch_size,
+                            shuffle=True, num_workers=settings.num_workers,collate_fn=datasets.collate_fn, drop_last=True)
+
+    test_loader = DataLoader(test_data, batch_size=settings.batch_size,
+                            shuffle=False, num_workers=settings.num_workers,collate_fn=datasets.collate_fn)
 
 num_batches = len(train_data) / settings.batch_size
 logger.info("Number of batches: %d", num_batches)
-logger.info("Number of classes: %d", train_data.num_classes)
+logger.info("Number of classes: %d", num_classes)
 logger.info("Training set size: %d", len(train_data))
 logger.info("Test set size: %d", len(test_data))
 
 model = PointNet(
     number_points=settings.num_points,
-    num_classes=train_data.num_classes,
+    num_classes=num_classes,
     max_features=settings.max_features,
     pool_function=settings.pooling
 )
@@ -126,7 +146,7 @@ for epoch in range(settings.epochs):
         points, faces, label = data
         label: torch.Tensor = torch.squeeze(label)
         points: torch.Tensor = points.float().to(settings.device)
-        faces: torch.Tensor = faces.float().to(settings.device)
+        #faces: torch.Tensor = faces.float().to(settings.device)
         label: torch.Tensor = label.to(settings.device)
         
         #defense code not used
@@ -191,14 +211,16 @@ for epoch in range(settings.epochs):
     )
 
     if test_accuracy >= bestTestAcc:
-            torch.save(
-                        {
-                            'epoch': epoch + 1,
-                            'model_param': model.state_dict(),
-                            'optimizer': optimizer.state_dict(),
-                            'scheduler': scheduler.state_dict(),
-                        }, f'{settings.out}/FinalModel.pth.tar')
-            bestTestAcc = test_accuracy
+        torch.save(
+            {
+                'epoch': epoch + 1,
+                'model_param': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'scheduler': scheduler.state_dict(),
+            }, f'{settings.out}/FinalModel.pth.tar'
+        )
+        bestTestAcc = test_accuracy
+    print("best test acc: "+str(bestTestAcc)+", achieved on epoch: "+str(epoch))
 
     writer.add_scalar('accuracy/train', train_correct / train_amount, epoch)
     writer.add_scalar('loss/train', train_loss / train_amount, epoch)

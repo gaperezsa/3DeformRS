@@ -16,9 +16,9 @@ args = parser.parse_args()
 
 #change these as needed for current query
 models=["64pointnet"]#,"pointnet2","dgcnn","curvenet"]
-deformation="RotationZ"
+deformation="RotationX"
 usingModelnet10 = False
-sigmas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+sigmas = [0.01,0.02,0.025,0.03,0.04,0.05,0.06,0.07,0.075,0.08,0.09,0.1,0.15,0.2,0.25,0.3,0.35,0.4]#[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 base_path = "../output/3DcertifyComparison/"
 common_end = "/certification_chunk_1out_of1.csv"
 

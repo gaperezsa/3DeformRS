@@ -1,0 +1,2 @@
+  --model curvenet --dataset modelnet40 --base_classifier_path CurveNet/checkpoints/curvenet_cls_1/models/model.t7 --sigma 0.15 --certify_method translation --experiment_name curvenetTranslation0.15
+  --model curvenet --dataset modelnet40 --base_classifier_path CurveNet/checkpoints/curvenet_cls_1/models/model.t7 --sigma 0.35 --certify_method stretching --experiment_name curvenetStretching0.35

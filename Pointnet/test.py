@@ -12,8 +12,9 @@ from DataLoaders import datasets
 from model import PointNet
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_name', type=str, required=True, help='path of output directory')
-parser.add_argument('--dataset', type=str, default='modelnet40', help='the dataset to use', choices=['modelnet40'])
+parser.add_argument('--experiment_name', type=str, required=True, help='used to get path inside trained models folder')
+parser.add_argument('--dataset', type=str, default='modelnet40', help='the dataset to use', choices=['modelnet40','scanobjectnn'])
+parser.add_argument('--data_dir', type=str, default='Data/', help='the path to the raw data')
 parser.add_argument('--batch_size', type=int, default=128, help='mini-batch size')
 parser.add_argument('--num_points', type=int, default=1024, help='number of points per point cloud')
 parser.add_argument('--num_workers', type=int, default=0, help='number of parallel data loader workers')
@@ -24,25 +25,38 @@ parser.add_argument('--pooling', choices=['max', 'avg', 'sum'], default='max', h
 settings = parser.parse_args()
 
 settings.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-test_data = datasets.modelnet40(num_points=settings.num_points, split='test', rotate='none')
 
-test_loader = DataLoader(
-    dataset=test_data,
-    batch_size=settings.batch_size,
-    shuffle=False,
-    num_workers=settings.num_workers
-)
+if settings.dataset == 'modelnet40':
+    test_data = datasets.modelnet40(num_points=settings.num_points, split='test', rotate='none')
 
-print("Test Size: ", len(test_data))
-distribution = np.zeros(40, dtype=int)
-for sample in test_data:
-    _, _, label = sample
-    distribution[label.item()] += 1
-print(distribution)
+    test_loader = DataLoader(
+        dataset=test_data,
+        batch_size=settings.batch_size,
+        shuffle=False,
+        num_workers=settings.num_workers
+    )
+
+    num_classes = test_data.num_classes
+
+    print("Test Size: ", len(test_data))
+    distribution = np.zeros(40, dtype=int)
+    for sample in test_data:
+        _, _, label = sample
+        distribution[label.item()] += 1
+    print(distribution)
+
+elif settings.dataset == 'scanobjectnn':
+    test_data = datasets.ScanObjectNN(settings.data_dir, 'test',  settings.num_points,
+                            variant='obj_only', dset_norm="inf")
+    classes = test_data.classes
+    num_classes = len(classes)
+
+    test_loader = DataLoader(test_data, batch_size=settings.batch_size,
+                            shuffle=False, num_workers=settings.num_workers,collate_fn=datasets.collate_fn)
 
 model = PointNet(
     number_points=settings.num_points,
-    num_classes=test_data.num_classes,
+    num_classes=num_classes,
     max_features=settings.max_features,
     pool_function=settings.pooling
 )
