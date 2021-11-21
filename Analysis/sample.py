@@ -485,9 +485,11 @@ def _GenCloudAffine(x,perturbation):
 
 certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
 
+saveFolder = '/home/santamgp/Downloads/CVPRGraphics/PullingFiguresPool/rawPLY/'
+
 parser = argparse.ArgumentParser(description='Certify many examples')
-parser.add_argument("--sample_class", type=float, default=0 , help="0-39, which class to sample")
-parser.add_argument('--num_points', type=int, default=1024,help='num of points to use, default 1024 recommended')
+parser.add_argument("--sample_class", type=int, default=0 , help="0-39, which class to sample")
+parser.add_argument('--num_points', type=int, default=2048,help='num of points to use, default 1024 recommended')
 parser.add_argument("--data_path", type=str, default='../Pointnet2andDGCNN/Data/Modelnet40fp',help="path to dataset")
 parser.add_argument("--deformation_method", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--perturbation_amount", type=float, nargs='+',help="perturbation parameter, RotationX would only use 1, affine will use 12")
@@ -534,11 +536,11 @@ def Transformer(deformation,x,perturbation):
         "affineNoTranslation": _GenCloudAffineNoTranslation,
         "affine"            : _GenCloudAffine,
     }
-    return switcher.get(deformation,"not a valid deforamtion")(x,perturbation)
+    return switcher.get(deformation,"not a valid deformation")(x,perturbation)
 
 PC = sample.pos[0:args.num_points].cpu().detach().numpy()
-write_ply(PC, '../output/samples/'+args.deformation_method+'/Original.ply')
+write_ply(PC,saveFolder+'sampleClass'+str(args.sample_class)+'Original.ply')
 sample = Transformer(args.deformation_method,sample,args.perturbation_amount)
 PC = sample.pos[0:args.num_points].cpu().detach().numpy()
-write_ply(PC, '../output/samples/'+args.deformation_method+'/Perturbed.ply')
+write_ply(PC,saveFolder+'sampleClass'+str(args.sample_class)+args.deformation_method+str(args.perturbation_amount)+'.ply')
 
