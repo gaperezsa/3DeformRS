@@ -18,3 +18,14 @@ dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTrans
 dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data/ScanObjectNN | num_points: 1024 | experiment_name: debugging | epochs: 2
 dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data/ScanObjectNN | num_points: 1024 | experiment_name: debugging | epochs: 2
 dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data/ScanObjectNN | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: scanobjectnn | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: scanobjectnn | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: scanobjectnn | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: scanobjectnn | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2

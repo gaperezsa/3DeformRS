@@ -1,5 +1,6 @@
 #taken from https://github.com/eth-sri/3dcertify/blob/master/data_processing/datasets.py
-import os.path
+import os
+import os.path as osp
 
 from torch_geometric import datasets
 from torchvision.transforms import transforms
@@ -7,11 +8,13 @@ from torchvision.transforms import transforms
 from DataLoaders import transformers
 
 #change where you have your data
-__DATASET_ROOT = "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet/Data"
+DATASET_ROOT = osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/')
+#__DATASET_ROOT = "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet/Data"
 
 
 def modelnet40(num_points: int = 1024, split: str = 'train', rotate: str = 'z', add_noise: bool = None) -> datasets.modelnet.ModelNet:
-    dataset_root = os.path.join(__DATASET_ROOT, "modelnet40fp")
+    dataset_root = osp.join(DATASET_ROOT,'PointNet','modelnet40fp')
+    #dataset_root = os.path.join(__DATASET_ROOT, "modelnet40fp")
     assert 1 <= num_points <= 1024, "num_points must be between 1 and 1024"
     assert split in ['train', 'test'], "split must either be 'train' or 'test'"
     assert rotate in ['none', 'z', 'so3'], "rotate must be one of 'none', 'z', 'so3'"
@@ -167,7 +170,8 @@ class ScanObjectNN(torch.utils.data.Dataset):
                 (texture_resolution, texture_resolution, 3) map is created per face.
         """
         super().__init__()
-        self.data_dir = data_dir
+        self.data_dir = osp.join(DATASET_ROOT,'ScanObjectNN') if data_dir == '' else data_dir
+        data_dir = self.data_dir
         self.nb_points = nb_points
         self.normals = normals
         self.suncg = suncg

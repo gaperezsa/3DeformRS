@@ -8,12 +8,18 @@ Modified by
 @Author: Tiange Xiang
 @Contact: txia7609@uni.sydney.edu.au
 @Time: 2021/1/21 3:10 PM
+
+Modified by 
+@Author: Gabriel Perez
+@Contact: gaperezsa@unal.edu.co
+@Time: 2021/11/20 10:35 AM
 """
 
 
 import os
 import sys
 import glob
+import os.path as osp
 import h5py
 import numpy as np
 import torch
@@ -21,7 +27,8 @@ from torch.utils.data import Dataset
 
 
 # change this to your data root
-DATA_DIR = '/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/CurveNet/data'
+DATA_DIR = osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/')
+#DATA_DIR = '/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data'
 
 def download_modelnet40():
     if not os.path.exists(DATA_DIR):
@@ -196,7 +203,7 @@ class ShapeNetPart(Dataset):
 
 
 
-#taken from https://github.com/ajhamdi/MVTN#usage-3d-classification--retrieval
+#adapted from https://github.com/ajhamdi/MVTN#usage-3d-classification--retrieval
 
 from typing import Dict
 import numpy as np
@@ -306,7 +313,8 @@ class ScanObjectNN(torch.utils.data.Dataset):
                 (texture_resolution, texture_resolution, 3) map is created per face.
         """
         super().__init__()
-        self.data_dir = DATA_DIR if data_dir=="" else data_dir
+        self.data_dir = (DATA_DIR+'/ScanObjectNN/') if data_dir=="" else data_dir
+        data_dir = self.data_dir
         self.nb_points = nb_points
         self.normals = normals
         self.suncg = suncg

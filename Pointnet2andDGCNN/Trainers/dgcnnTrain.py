@@ -19,7 +19,8 @@ from torch_geometric.data import DataLoader
 from torch_geometric.nn import DynamicEdgeConv, global_max_pool
 
 import sys
-sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet2andDGCNN/Trainers/")
+#sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet2andDGCNN/Trainers/")
+sys.path.insert(0, osp.dirname(osp.realpath(__file__)) )
 from pointnet2Train import MLP
 
 class Net(torch.nn.Module):
@@ -144,8 +145,7 @@ if __name__ == '__main__':
     
     if args.dataset == 'modelnet40':
         #dataset and loaders
-        path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
-                        'Data/Modelnet40fp')
+        path = osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/PointNet2andDGCNN/Modelnet40fp')
         pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
         train_dataset = ModelNet(path, '40', True, transform, pre_transform)
         test_dataset = ModelNet(path, '40', False, transform, pre_transform)
@@ -157,8 +157,7 @@ if __name__ == '__main__':
 
     elif args.dataset == 'modelnet10':
         #dataset and loaders
-        path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
-                        'Data/Modelnet10fp')
+        path = osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/PointNet2andDGCNN/Modelnet40fp')
         pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
         train_dataset = ModelNet(path, '10', True, transform, pre_transform)
         test_dataset = ModelNet(path, '10', False, transform, pre_transform)

@@ -22,7 +22,7 @@ datasetChoices = ['modelnet40','scanobjectnn']
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_name', type=str, required=True, help='willbe used as the name of the output dir')
 parser.add_argument('--dataset', type=str, default='modelnet40', help='the dataset to use', choices=datasetChoices)
-parser.add_argument('--data_dir', type=str, default='Data/', help='path to the raw data')
+parser.add_argument('--data_dir', type=str, default='', help='path to the raw data')
 parser.add_argument('--batch_size', type=int, default=128, help='mini-batch size')
 parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--num_points', type=int, default=1024, help='number of points per point cloud')

@@ -14,7 +14,7 @@ from model import PointNet
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_name', type=str, required=True, help='used to get path inside trained models folder')
 parser.add_argument('--dataset', type=str, default='modelnet40', help='the dataset to use', choices=['modelnet40','scanobjectnn'])
-parser.add_argument('--data_dir', type=str, default='Data/', help='the path to the raw data')
+parser.add_argument('--data_dir', type=str, default='', help='the path to the raw data')
 parser.add_argument('--batch_size', type=int, default=128, help='mini-batch size')
 parser.add_argument('--num_points', type=int, default=1024, help='number of points per point cloud')
 parser.add_argument('--num_workers', type=int, default=0, help='number of parallel data loader workers')
