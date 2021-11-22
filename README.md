@@ -1,6 +1,5 @@
 # 3DeformRS
-Official implementation of "3DeformRS: Certifying Spatial Deformations on Point Clouds",
-Research done as VSRP in King Abullah's University of Science and Technology by Gabriel Pérez S
+Official implementation of "3DeformRS: Certifying Spatial Deformations on Point Clouds"
 
 ![3DeformRS](./pull_pc.png)
 
@@ -241,4 +240,4 @@ python3 getGraph.py --dataset scanobjectnn --deformation RotationZ
 
 flag --parallel is recommended if multi-core computation is available.
 
-Not passing the --deformation flag or passing the value "all" are equivalent and all deformations will be searched for and attempted to get the enveope out of.
+Not passing the --deformation flag or passing the value "all" are equivalent and all deformations will be searched for and attempted to get the envelope out of.
