@@ -25,16 +25,13 @@ parser.add_argument('--less_labels', action='store_true', default=False, help='a
 args = parser.parse_args()
 
 #change these as needed for current query
-models=["0.01apointnet","0.0001apointnet","0.00001apointnet"]#,"pointnet2","dgcnn","curvenet"]
-deformation="RotationXYZ"
-usingModelnet10 = False
+models=["Pointnet2"]#,"pointnet2","dgcnn","curvenet"]
+deformation="RotationZ"
 #sigmas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4,1.5]#[0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3]
 counter = 0
-base_path = "../output/certify/AlphaExperiments/"
-common_end = "/certification_chunk_1out_of1.csv"
-save_path = '/home/santamgp/Downloads/CVPRGraphics/3DCertifyComparison/'
+base_path = "../output/certify/scanobjectnn/RotationZ/"
+save_path = '/home/santamgp/Downloads/CVPRGraphics/TestingREADME/'
 current_experiment = ""
-alphas=[0.01,0.0001,0.00001]
 
 
 #function used if parallel computation asked
@@ -68,19 +65,18 @@ def DomainTransformer(deformation,radius):
     }
     return switcher.get(deformation,"not a valid deforamtion with defined hypervolume")(radius)
 
-
-fig,axes = plt.subplots(1,len(models),sharey=True)#figsize=(10, 4)
-fig.suptitle(str(deformation),fontsize=20)
+if(len(models) == 1):
+    axes=[1]
+    fig,axes[0] = plt.subplots(1,len(models),sharey=True)#figsize=(10, 4)
+    fig.suptitle(str(deformation),fontsize=20)
+else:
+    fig,axes = plt.subplots(1,len(models),sharey=True)#figsize=(10, 4)
+    fig.suptitle(str(deformation),fontsize=20)
 for model in models:
     try:
-        # if not usingModelnet10:
-        #     current_experiments = [model+deformation+str(sigma) for sigma in sigmas]
-        # else:
-        #     current_experiments = [model+deformation+"Modelnet10_"+str(sigma) for sigma in sigmas]
-        # csvPaths = [base_path+current_experiment+common_end for current_experiment in current_experiments]
         csvPaths = sorted(glob.glob(f"{base_path}/*{model}{deformation}*/*.csv"))
-        sigmasBuilder = sorted(glob.glob(f"{base_path}/*{model}{deformation}*"))
-        sigmas = [ i.split(deformation)[1] for i in sigmasBuilder]
+        sigmasBuilder = sorted(glob.glob(f"{base_path}/*{model}{deformation}[0-9]*"))
+        sigmas = [ i.split(deformation)[-1] for i in sigmasBuilder]
         sigmas = [float(s) for s in sigmas]
         dfs = [pd.read_csv(csvPath,skiprows=1) for csvPath in csvPaths] #first row is the command used, not needed here
         totalRows = max([df.count()[0] for df in dfs])
@@ -125,11 +121,11 @@ for model in models:
             else:
                 plottingDomain = EnvelopeXdomain
 
-            sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(), y=EnvelopeYvalues,label=f'Ours (Envelope) ACR={metrics.auc(plottingDomain.tolist(), EnvelopeYvalues):.2f}')
+            sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(), y=EnvelopeYvalues,label=f'Ours (Envelope) \nACR={metrics.auc(plottingDomain.tolist(), EnvelopeYvalues):.2f}')
             #plt.plot(plottingDomain.tolist(), EnvelopeYvalues,label='envelope')
             print('done!\n')
         
-        #draw other papers points
+        #draw other paper's points
         if (model == "64pointnet" and deformation == "RotationZ" and args.envelope):
             axes[counter].plot(0.0523599,88/90,'ro')#3 degreees
             axes[counter].plot(0.349066,0.967,'ro',label='3D certify')#20 degreees, 96.7%
@@ -147,7 +143,7 @@ for model in models:
             #plt.plot(0.261799,50/90,'ro')  #15 degree, 
         elif (model == "64pointnet" and deformation == "RotationY" and args.envelope):
             axes[counter].plot(0.0174533,89/90,'ro',label='3D certify')#1 degree, 98.8%
-            axes[counter].plot(0.0349066,89/90,'ro') #2 degree, 95.5%
+            axes[counter].plot(0.0349066,89/90,'ro') #2 degree,
             axes[counter].plot(0.0523599,89/90,'ro') #3 degree, 
             axes[counter].plot(0.0698132,88/90,'ro') #4 degree, 
             axes[counter].plot(0.0872665,86/90,'ro') #5 degree, 
@@ -171,7 +167,7 @@ for model in models:
     
 
     # Settings, change these to your liking
-    axes[counter].set_title(r'$\alpha = $'+str(alphas[counter]))
+    axes[counter].set_title(f'{model}')
 
     if (args.hypervolume):
         axes[counter].set_xlabel('certified hypervolume')
@@ -196,7 +192,7 @@ for model in models:
     counter+=1
 
 
-plt.savefig(f"{save_path}Alpha{deformation}.png",bbox_inches='tight')
-plt.savefig(f"{save_path}Alpha{deformation}.pdf",bbox_inches='tight')
-plt.savefig(f"{save_path}Alpha{deformation}.eps",bbox_inches='tight')
+plt.savefig(f"{save_path}{deformation}.png",bbox_inches='tight')
+plt.savefig(f"{save_path}{deformation}.pdf",bbox_inches='tight')
+plt.savefig(f"{save_path}{deformation}.eps",bbox_inches='tight')
 plt.show()

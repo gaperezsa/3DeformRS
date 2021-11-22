@@ -9,7 +9,6 @@
 #SBATCH -e logs/%x_%A_%a.err
 #SBATCH --array=1-80
 #SBATCH --constraint=rtx2080ti
-##SBATCH --account=conf-cvpr-2021.11.23-ghanembs
 
 module load gcc
 

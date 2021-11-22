@@ -7,6 +7,7 @@ import h5py
 import pandas as pd
 from torch.utils.data.dataset import Dataset
 import os
+import os.path as osp
 import torch
 import collections
 from torch_geometric.data import Data
@@ -68,7 +69,8 @@ class ScanObjectNN(torch.utils.data.Dataset):
                 (texture_resolution, texture_resolution, 3) map is created per face.
         """
         super().__init__()
-        self.data_dir = data_dir
+        self.data_dir= osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/ScanObjectNN/') if data_dir=='' else data_dir
+        data_dir = self.data_dir
         self.nb_points = nb_points
         self.normals = normals
         self.suncg = suncg

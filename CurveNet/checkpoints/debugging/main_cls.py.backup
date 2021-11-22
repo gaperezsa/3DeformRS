@@ -8,6 +8,11 @@ Modified by
 @Author: Tiange Xiang
 @Contact: txia7609@uni.sydney.edu.au
 @Time: 2021/01/21 3:10 PM
+
+Modified by 
+@Author: Gabriel Perez
+@Contact: gaperezsa@unal.edu.co
+@Time: 2021/11/20 10:35 AM
 """
 
 from __future__ import print_function
@@ -53,6 +58,7 @@ def train(args, io):
                                 batch_size=args.batch_size, shuffle=True, drop_last=True)
         test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=args.num_workers,
                                 batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+        num_classes = 40
 
     elif args.dataset == 'scanobjectnn':
         train_data = ScanObjectNN(args.data_dir, 'train',  args.num_points,
@@ -74,7 +80,7 @@ def train(args, io):
     io.cprint("Let's use" + str(torch.cuda.device_count()) + "GPUs!")
     
     # create model
-    model = CurveNet().to(device)
+    model = CurveNet(num_classes=num_classes).to(device)
     model = nn.DataParallel(model)
 
     if args.use_sgd:
@@ -157,18 +163,34 @@ def train(args, io):
         outstr = 'Test %d, loss: %.6f, test acc: %.6f' % (epoch, test_loss*1.0/count, test_acc)
         io.cprint(outstr)
         if test_acc >= best_test_acc:
+            io.cprint('saving this model, this test acc: {} is better than the previous best: {}'.format(test_acc,best_test_acc))
             best_test_acc = test_acc
             torch.save(model.state_dict(), '../checkpoints/%s/models/model.t7' % args.exp_name)
+        
+        #always saving the latest one just in case
+        torch.save(model.state_dict(), '../checkpoints/%s/models/latestModel.t7' % args.exp_name)
+        
         io.cprint('best: %.3f' % best_test_acc)
 
 def test(args, io):
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),
-                             batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+    if args.dataset == 'modelnet40':
+        test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=args.num_workers,
+                                batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+        num_classes=40
+
+    elif args.dataset == 'scanobjectnn':
+        test_data = ScanObjectNN(args.data_dir, 'test',  args.num_points,
+                                variant='obj_only', dset_norm="inf")
+        classes = test_data.classes
+        num_classes = len(classes)
+
+        test_loader = DataLoader(test_data, batch_size=args.batch_size,
+                                shuffle=False, num_workers=args.num_workers,collate_fn=collate_fn)
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
     #Try to load models
-    model = CurveNet().to(device)
+    model = CurveNet(num_classes=num_classes).to(device)
     model = nn.DataParallel(model)
     model.load_state_dict(torch.load(args.model_path))
 
@@ -200,8 +222,8 @@ if __name__ == "__main__":
                         help='Name of the experiment')
     parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
                         choices=['modelnet40','scanobjectnn'])
-    parser.add_argument('--data_dir', type=str, default='CurveNet/data/',
-                        help='path to raw data')
+    parser.add_argument('--data_dir', type=str, default='',
+                        help='path to raw data, if not passed, DATA_DIR from data.py will be used')
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--num_workers', type=int, default=0,

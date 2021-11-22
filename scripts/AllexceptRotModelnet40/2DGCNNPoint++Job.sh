@@ -8,7 +8,6 @@
 #SBATCH -o logs/%x_%A_%a.out
 #SBATCH -e logs/%x_%A_%a.err
 #SBATCH --array=87-116
-##SBATCH --account=conf-cvpr-2021.11.23-ghanembs
 
 module load gcc
 

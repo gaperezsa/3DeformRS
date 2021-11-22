@@ -11,18 +11,18 @@ import math
 
 dataset_choices = ['modelnet40','modelnet10','scanobjectnn']
 model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
-certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
+certification_method_choices = ['RotationX','RotationY','RotationZ','RotationXZ','RotationXYZ','Translation','Shearing','Tapering','Twisting','Squeezing','Stretching','GaussianNoise','Affine','AffineNoTranslation'] 
 
 
 
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
-parser.add_argument("--data_dir", default='Data/ScanObjectNN',help="where is the dataset (for example scanobject)")
+parser.add_argument("--data_dir", default='',help="where is the dataset (for example scanobject)")
 parser.add_argument("--model", type=str, choices=model_choices, help="model name")
 parser.add_argument('--num_points', type=int, default=1024,help='num of points to use in case of curvenet, default 1024 recommended')
 parser.add_argument('--max_features', type=int, default=1024,help='max features in Pointnet inner layers')
 parser.add_argument("--base_classifier_path", type=str, help="path to saved pytorch model of base classifier")
-parser.add_argument("--certify_method", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
+parser.add_argument("--certify_method", type=str, default='RotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--sigma", type=float, help="noise hyperparameter")
 parser.add_argument("--experiment_name", type=str, required=True,help='name of directory for saving results')
 parser.add_argument("--certify_batch_sz", type=int, default=128, help="cetify batch size")
@@ -37,13 +37,13 @@ parser.add_argument('--uniform', action='store_true', default=False, help='certi
 
 args = parser.parse_args()
 
-if args.certify_method[0:8] == 'rotation' and args.sigma > 1:
+if (args.certify_method[0:8] == 'rotation' or args.certify_method[0:8] == 'Rotation') and args.sigma > 1:
     args.sigma = 1
     print("sigma above 1 for rotations is redundant (1 means +-Pi radians), setting sigma=1")
 
 
 # full path for output
-args.basedir = os.path.join('output/certify', args.experiment_name)
+args.basedir = os.path.join('output/certify',args.dataset,args.certify_method, args.experiment_name)
 
 # Log path: verify existence of output_path dir, or create it
 if not os.path.exists(args.basedir):
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         if args.dataset == 'modelnet40':
             
             #dataset and loaders
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet40fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Data/PointNet2andDGCNN/Modelnet40fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
             print(path)
             test_dataset = ModelNet(path, '40', False, transform, pre_transform)
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         elif args.dataset == 'modelnet10':
             
             #dataset and loaders
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet10fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Data/PointNet2andDGCNN/Modelnet10fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024)
             print(path)
             test_dataset = ModelNet(path, '10', False, transform, pre_transform)
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
         if args.dataset == 'modelnet40':
 
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet40fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Data/PointNet2andDGCNN/Modelnet40fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
             print(path)
             test_dataset = ModelNet(path, '40', False, transform, pre_transform)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
         elif args.dataset == 'modelnet10':
 
-            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Pointnet2andDGCNN/Data/Modelnet10fp')
+            path = osp.join(osp.dirname(osp.realpath(__file__)), 'Data/PointNet2andDGCNN/Modelnet10fp')
             pre_transform, transform = T.NormalizeScale(), T.SamplePoints(1024) #convert to pointcloud
             print(path)
             test_dataset = ModelNet(path, '10', False, transform, pre_transform)
@@ -210,7 +210,7 @@ if __name__ == "__main__":
                                     shuffle=False, num_workers=0,collate_fn=collate_fn)
         
         #declare and load pretrained model
-        base_classifier = CurveNet().to(device)
+        base_classifier = CurveNet(num_classes=num_classes).to(device)
         base_classifier = nn.DataParallel(base_classifier)
         base_classifier.load_state_dict(torch.load(args.base_classifier_path))
         base_classifier.eval()
@@ -218,7 +218,8 @@ if __name__ == "__main__":
     elif args.model == 'pointnet':
         
         import sys
-        sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet")
+        sys.path.insert(0, osp.join(osp.dirname(osp.realpath(__file__)),'Pointnet'))
+        #sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet")
 
         import torch
         import torch.nn as nn
@@ -289,7 +290,7 @@ if __name__ == "__main__":
 
        
 
-    if args.certify_method[0:8] == 'rotation':
+    if args.certify_method[0:8] == 'rotation' or args.certify_method[0:8] == 'Rotation':
         args.sigma *= math.pi # For rotaions to transform the angles to [0, pi]
     # create the smooothed classifier g
     smoothed_classifier = SmoothFlow(base_classifier, num_classes, args.certify_method, args.sigma)

@@ -24,7 +24,7 @@ dataset_choices = ['modelnet40','modelnet10','scanobjectnn']
 #arguments passed
 parser = ArgumentParser(description='PyTorch code for GeoCer')
 parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
-parser.add_argument('--data_dir', type=str, default='Data/Modelnet40fp',help='path to raw data')
+parser.add_argument('--data_dir', type=str, default='',help='path to raw data')
 parser.add_argument('--num_points', type=int, default=1024,help='points to sample per point cloud')
 parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
 args = parser.parse_args()
@@ -33,8 +33,7 @@ args = parser.parse_args()
 #dataset and loaders
 if args.dataset == 'modelnet40':
     
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
-                    'Data/Modelnet40fp')
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/PointNet2andDGCNN/Modelnet40fp')
     pre_transform, transform = T.NormalizeScale(), T.SamplePoints(args.num_points) #convert to pointcloud
     print(path)
     test_dataset = ModelNet(path, '40', False, transform, pre_transform)
@@ -44,8 +43,7 @@ if args.dataset == 'modelnet40':
 
 elif args.dataset == 'modelnet10':
     
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..',
-                    'Data/Modelnet10fp')
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/PointNet2andDGCNN/Modelnet10fp')
     pre_transform, transform = T.NormalizeScale(), T.SamplePoints(args.num_points) #convert to pointcloud
     print(path)
     test_dataset = ModelNet(path, '10', False, transform, pre_transform)
