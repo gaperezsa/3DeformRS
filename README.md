@@ -46,7 +46,6 @@ The following examples use ModelNet40, be aware that to use ScanObjectNN, value 
 
 ### CurveNet
 
-from main directory:
 **Training**
 
 ```
@@ -60,7 +59,6 @@ python3 main_cls.py --eval True --exp_name cuvenetModelNet40BaseLine --dataset m
 
 ### PointNet
 
-from main directory:
 **Training**
 
 ```
@@ -76,7 +74,6 @@ python3 test.py --experiment_name pointnetModelNet40BaseLine --dataset modelnet4
 
 ### PointNet++
 
-from main directory:
 **Training**
 
 ```
@@ -92,7 +89,6 @@ python3 pointnet2Test.py --experiment_name pointnet2ModelNet40Baseline --dataset
 
 ### DGCNN
 
-from main directory:
 **Training**
 
 ```
@@ -105,3 +101,13 @@ python3 dgcnnTrain.py --experiment_name dgcnnModelNet40Baseline --dataset modeln
 ```
 python3 dgcnnTest.py --experiment_name dgcnnModelNet40Baseline --dataset modelnet40
 ```
+
+## Certify
+
+After having trained a model, Certify.py can receive a path to the model, name of the network, in which dataset it was trained, the certified method or perturbation to be certified against, the sigma noise hyperparameter and the name of this experiment.
+
+From this point on, the we will follow the user case of certifying a **Pointnet++ instance against rotations** and producing figures such as the ones in the paper. However, the idea is the same for any other network and deformation that one may need.
+
+dataset_choices = ['modelnet40','modelnet10','scanobjectnn']
+model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
+certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
