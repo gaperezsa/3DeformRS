@@ -9,7 +9,6 @@
 #SBATCH -e logs/%x_%A_%a.err
 #SBATCH --array=1-556
 #SBATCH --constraint=v100
-##SBATCH --account=conf-cvpr-2021.11.23-ghanembs
 
 module load gcc
 
