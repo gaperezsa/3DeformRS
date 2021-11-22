@@ -12,7 +12,7 @@ Research done as VSRP in King Abullah's University of Science and Technology by 
 
 ## Data
 
-two major datasets were used, ModelNet40 and ScanObjectNN
+Two major datasets were used, ModelNet40 and ScanObjectNN
 
 
 ### ModelNet40
@@ -35,7 +35,7 @@ The ScanObject dataset can be obtained for reserach purposes following the corre
 
 ## Training and Testing
 
-pre-trained models from us as well as original authors of the assessed DNN's can be found in the corresponding folder for every module:
+Pre-trained models from us as well as original authors of the assessed DNN's can be found in the corresponding folder for every module:
 * ```3D-RS-PointCloudCertifying/CurveNet/checkpoints/``` for CurveNet
 * ```3D-RS-PointCloudCertifying/Pointnet/trainedModels``` for PointNet
 * ```3D-RS-PointCloudCertifying/Pointnet2andDGCNN/trainedModels``` for PointNet++ and DGCNN
@@ -106,15 +106,15 @@ python3 dgcnnTest.py --experiment_name dgcnnScanObjectNNBaseline --dataset scano
 
 After having trained a model, Certify.py can receive a path to the model, name of the network, in which dataset it was trained, the certified method or perturbation to be certified against, the sigma noise hyperparameter and the name of this experiment.
 
-From this point on, the we will follow the user case of certifying a **Pointnet++ instance against rotation Z on ScanObjectNN** and producing figures such as the ones in the paper. However, the idea is the same for any other network, deformation or dataset that one may need.
+From this point on, we will follow the user case of certifying a **Pointnet++ instance against rotation Z on ScanObjectNN** and producing figures such as the ones in the paper. However, the idea is the same for any other network, deformation or dataset that one may need.
 
 dataset_choices = ['modelnet40','scanobjectnn']
 
 model_choices = ['pointnet2','dgcnn','curvenet','pointnet']
 
-certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
+certification_method_choices = ['RotationX','RotationY','RotationZ','RotationXZ','RotationXYZ','Translation','Shearing','Tapering','Twisting','Squeezing','Stretching','GaussianNoise','Affine','AffineNoTranslation']
 
-Be aware, perturbation choices such as squeezing or stretching are ill defined for interpreting their certified radius and so, they were taken out of the official paper.
+Beware, perturbation choices such as squeezing or stretching are ill defined for interpreting their certified radius and so, they were taken out of the official paper.
 
 ### Run the experiments
 
@@ -167,6 +167,14 @@ Each of these experiments will take between 30 min to 2 hours depending on your 
 
 There should be one folder per experiment under ```3D-RS-PointCloudCertifying/output/certify/scanobjectnn/RotationZ/``` 
 
+inside each of these folder, a .txt and a .csv version of the results can be found with the columns:
+
+* Correct label
+* prediction of the smoothed classifier
+* certified radius
+* boolean value if correct
+* time taken
+
 ### Analyse results, Make the corresponding graphics
 
 Under the Analysis folder, two programs of interest may be found: 
@@ -185,16 +193,20 @@ some examples:
 
 
 
-It is **strongly** recommended to go into said files and change the default values and settings for producing theses graphs according to your needed query. By default, when running Certify.py the directory ```3D-RS-PointCloudCertifying/ouput/certify/[dataset]/[deformation]/``` should now exist per deformation and with all results from one common deformation under it.
+It is **strongly** recommended to go into said files and change the default values and settings for producing theses graphs according to your needed query. By default, when running Certify.py, the directory ```3D-RS-PointCloudCertifying/ouput/certify/[dataset]/[deformation]/``` should now exist per deformation and with all results from one common deformation under it.
 
 #### getGraph.py
 
 To reproduce the different sigmas graph for rotation Z on ScanObjectNN with pointnet++:
 
 set models = ['Pointnet2']
+
 set deformation = "RotationZ"
+
 set base_path = "../output/certify/scanobjectnn/RotationZ/"
+
 set save_path = '/[path to where you want the graphs to be saved]/'
+
 
 after this:
 
@@ -204,17 +216,21 @@ python3 getGraph.py
 ```
 
 flag --parallel is recommended if multi-core computation is available.
-flag --envelope will output the same graphic but with every sigma curve dashed and a thicker envelope curve.
+
+flag --envelope will output the same graph but with every sigma curve dashed and a thicker envelope curve.
 
 #### getEnvelope.py
 
-This program was created with the intent to directly generate all deformations envelope comparisons, as seen on the paper, rather than setting one model per graph and showing the noise hyperparameters they depend on, like the ones produced by: getGraph.py
+This program was created with the intent to directly generate all deformations envelope comparisons, as seen on the paper, rather than setting one model per graph and showing the noise hyperparameters they depend on like the ones produced by: getGraph.py
 
-to only reproduce the envelopes graph for rotation Z on ScanObjectNN :
+To only reproduce the envelopes graph for rotation Z on ScanObjectNN :
 
 set models = ['Pointnet','Pointnet2','Dgcnn','Curvenet']
+
 set base_path = "../output/certify/scanobjectnn/"
+
 set save_path = '/[path to where you want the graphs to be saved]/'
+
 
 after this:
 
@@ -224,4 +240,5 @@ python3 getGraph.py --dataset scanobjectnn --deformation RotationZ
 ```
 
 flag --parallel is recommended if multi-core computation is available.
-not passing the --deformation flag or passing the value "all" are equivalent and all deformations will be searched for and attempted to get the enveope out of.
+
+Not passing the --deformation flag or passing the value "all" are equivalent and all deformations will be searched for and attempted to get the enveope out of.
