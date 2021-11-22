@@ -10,8 +10,7 @@ Modified by
 @Time: 2021/1/21 3:10 PM
 
 Modified by 
-@Author: Gabriel Perez
-@Contact: gaperezsa@unal.edu.co
+@Author: Anonymous cvpr submitter
 @Time: 2021/11/20 10:35 AM
 """
 

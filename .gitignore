@@ -131,10 +131,15 @@ dmypy.json
 
 
 #custom
-Data/
+Data/modelnet40_ply_hdf5_2048/
+Data/PointNet/modelnet40fp/
+Data/PointNet2andDGCNN/Modelnet40fp/
+Data/PointNet2andDGCNN/Modelnet10fp/
+Data/ScanObjectNN/
 output/
 tensorboard/
 logs/
+scripts/
 
 Pointnet2andDGCNN/Data/
 Pointnet2andDGCNN/tensorboard/
