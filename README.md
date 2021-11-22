@@ -9,6 +9,14 @@ Official implementation of "3DeformRS: Certifying Spatial Deformations on Point 
 - Pytorch-geometric = 1.7
 - scipy = 1.7
 
+## Setup
+Install [Anaconda](https://docs.anaconda.com/anaconda/install/linux/), change directory to ```3D-RS-PointCloudCertifying/ ``` and execute:
+```
+conda env create -f environment.yml
+conda activate CertifyingPointclouds
+```
+
+
 ## Data
 
 Two major datasets were used, ModelNet40 and ScanObjectNN

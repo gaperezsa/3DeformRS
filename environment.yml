@@ -1,9 +1,9 @@
-name: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds
+name: CertifyingPointclouds
 channels:
   - rusty1s
-  - anaconda
   - pytorch
   - nvidia
+  - anaconda
   - conda-forge
   - defaults
 dependencies:
@@ -19,8 +19,8 @@ dependencies:
   - brotlipy=0.7.0=py38h497a2fe_1001
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.17.1=h27cfd23_0
-  - ca-certificates=2021.5.30=ha878542_0
-  - certifi=2021.5.30=py38h578d9bd_0
+  - ca-certificates=2020.10.14=0
+  - certifi=2020.6.20=py38_0
   - cffi=1.14.6=py38ha65f79e_0
   - chardet=4.0.0=py38h578d9bd_1
   - charset-normalizer=2.0.0=pyhd8ed1ab_0
@@ -137,6 +137,7 @@ dependencies:
   - requests=2.26.0=pyhd8ed1ab_0
   - scikit-learn=0.24.2=py38ha9443f7_0
   - scipy=1.7.1=py38h292c36d_2
+  - seaborn=0.11.0=py_0
   - setuptools=52.0.0=py38h06a4308_0
   - sip=4.19.13=py38he6710b0_0
   - six=1.16.0=pyhd3eb1b0_0
@@ -163,4 +164,3 @@ dependencies:
   - zipp=3.5.0=pyhd8ed1ab_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.4.9=haebb681_0
-prefix: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds
