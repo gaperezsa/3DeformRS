@@ -766,7 +766,7 @@ class SmoothFlow(object):
                 this_batch_size = min(batch_size, num)
                 num -= this_batch_size
 
-                if self.certify_method == 'gaussianNoise':
+                if self.certify_method == 'GaussianNoise':
                     batch = self._GenCloudGaussianNoise(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -777,7 +777,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/gaussianNoise/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotationX':
+                elif self.certify_method == 'RotationX':
                     batch = self._GenCloudRotationX(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -788,7 +788,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotationY':
+                elif self.certify_method == 'RotationY':
                     batch = self._GenCloudRotationY(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -799,7 +799,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotationZ':
+                elif self.certify_method == 'RotationZ':
                     batch = self._GenCloudRotationZ(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -810,7 +810,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotationXZ':
+                elif self.certify_method == 'RotationXZ':
                     batch = self._GenCloudRotationXZ(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -821,7 +821,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'rotation' or self.certify_method == 'rotationXYZ':
+                elif self.certify_method == 'Rotation' or self.certify_method == 'RotationXYZ':
                     batch = self._GenCloudRotationXYZ(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -832,7 +832,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/rotation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'translation':
+                elif self.certify_method == 'Translation':
                     batch = self._GenCloudTranslation(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -843,7 +843,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/translation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'shearing':
+                elif self.certify_method == 'Shearing':
                     batch = self._GenCloudShearing(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -854,7 +854,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/shearing/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'tapering':
+                elif self.certify_method == 'Tapering':
                     batch = self._GenCloudTapering(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -865,7 +865,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/tapering/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'twisting':
+                elif self.certify_method == 'Twisting':
                     batch = self._GenCloudTwisting(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -876,7 +876,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/twisting/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'squeezing':
+                elif self.certify_method == 'Squeezing':
                     batch = self._GenCloudSqueezing(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -887,7 +887,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/squeezing/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
                 
-                elif self.certify_method == 'stretching':
+                elif self.certify_method == 'Stretching':
                     batch = self._GenCloudStretching(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -898,7 +898,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/stretching/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'affineNoTranslation':
+                elif self.certify_method == 'AffineNoTranslation':
                     batch = self._GenCloudAffineNoTranslation (x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
@@ -909,7 +909,7 @@ class SmoothFlow(object):
                         write_ply(PC, 'output/samples/affineNoTranslation/'+self.exp_name+'Perturbed.ply')
                         self.plywritten = True
 
-                elif self.certify_method == 'affine':
+                elif self.certify_method == 'Affine':
                     batch = self._GenCloudAffine(x, this_batch_size,cert_batch_num)
 
                     #write as ply the original and a perturbed pointcloud
