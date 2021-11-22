@@ -31,7 +31,7 @@ Both of these implementations are taken from the torch geometric examples and, b
 ### ScanObject
 The ScanObject dataset can be obtained for reserach purposes following the correct process as stated in their public [page](https://hkust-vgd.github.io/scanobjectnn/). That is, writing an email to <mikacuy@gmail.com>, accepting terms of use and downloading. Once obtained please **unzip and place directly on the Data folder**. If you need this dataset in a different folder, flag --data_dir can be passed with the absolute path to it.
 
-**NOTE:** all following commands assume the current working directory is ```3D-RS-PointCloudCertifying/``` when beggining.
+
 
 ## Training and Testing
 
@@ -40,18 +40,68 @@ pre-trained models from us as well as original authors of the assessed DNN's can
 * ```3D-RS-PointCloudCertifying/Pointnet/trainedModels``` for PointNet
 * ```3D-RS-PointCloudCertifying/Pointnet2andDGCNN/trainedModels``` for PointNet++ and DGCNN
 
+The following examples use ModelNet40, be aware that to use ScanObjectNN, value "scanobjectnn" must be passed instead of modelnet40 under the --dataset flag.
+
+**NOTE:** all following commands assume the current working directory is ```3D-RS-PointCloudCertifying/``` when beggining.
+
 ### CurveNet
-Uses the ply_hdf5_2048 version which can be manually downloaded from [offical data](https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip) and then unzipped directly under the Data folder.
+
+from main directory:
+**Training**
+
+```
+cd CurveNet/core/
+python3 main_cls.py --exp_name curvenetModelNet40BaseLine --dataset modelnet40 --epochs 100 --num_workers 10
+```
+**Testing**
+```
+python3 main_cls.py --eval True --exp_name cuvenetModelNet40BaseLine --dataset modelnet40 --num_workers 10 --model_path [your_own_path]/3D-RS-PointCloudCertifying/CurveNet/checkpoints/modelNet40BaseLine/models/model.t7
+```
 
 ### PointNet
-Downloads the torch geometric version of the dataset, however, uses hand-made pre-transforms which make it incompatible with the vanilla torch geometric version of the dataset. namely, it applies transformers.SamplePoints(num=4096) transformers.FarthestPoints(num_points=1024). pre-transforms made by this implementation were kept in order to be consistent when comparing against [3D Certify](https://github.com/eth-sri/3dcertify)
 
-### PointNet++ and DGCNN
-Both of these implementations are taken from the torch geometric examples and, because of this, uses the torch geometric integrated version of the dataset. 
-
+from main directory:
+**Training**
 
 ```
-./start_cls.sh
+cd Pointnet/
+python3 train.py --experiment_name pointnetModelNet40BaseLine --dataset modelnet40 --epochs 100 --num_workers 10 --rotation none
 ```
 
-python3 train.py --experiment_name debugging --dataset modelnet40 --epochs 2 --num_workers 10 --rotation none
+**Testing**
+
+```
+python3 test.py --experiment_name pointnetModelNet40BaseLine --dataset modelnet40 --num_workers 10
+```
+
+### PointNet++
+
+from main directory:
+**Training**
+
+```
+cd Pointnet2andDGCNN/Trainers/
+python3 pointnet2Train.py --experiment_name pointnet2ModelNet40Baseline --dataset modelnet40 --epochs 100
+```
+
+**Testing**
+
+```
+python3 pointnet2Test.py --experiment_name pointnet2ModelNet40Baseline --dataset modelnet40
+```
+
+### DGCNN
+
+from main directory:
+**Training**
+
+```
+cd Pointnet2andDGCNN/Trainers/
+python3 dgcnnTrain.py --experiment_name dgcnnModelNet40Baseline --dataset modelnet40 --epochs 100
+```
+
+**Testing**
+
+```
+python3 dgcnnTest.py --experiment_name dgcnnModelNet40Baseline --dataset modelnet40
+```
