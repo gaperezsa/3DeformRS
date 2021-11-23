@@ -10,8 +10,7 @@ Modified by
 @Time: 2021/01/21 3:10 PM
 
 Modified by 
-@Author: Gabriel Perez
-@Contact: gaperezsa@unal.edu.co
+@Author: Anonymous cvpr submitter
 @Time: 2021/11/20 10:35 AM
 """
 
@@ -223,7 +222,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
                         choices=['modelnet40','scanobjectnn'])
     parser.add_argument('--data_dir', type=str, default='',
-                        help='path to raw data, if not passe, DATA_DIR from data.py will be used')
+                        help='path to raw data, if not passed, DATA_DIR from data.py will be used')
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--num_workers', type=int, default=0,

@@ -4,6 +4,7 @@ import matplotlib
 import argparse
 import math
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import multiprocessing
 import seaborn as sns
 import glob
@@ -25,12 +26,12 @@ parser.add_argument('--less_labels', action='store_true', default=False, help='a
 args = parser.parse_args()
 
 #change these as needed for current query
-models=["Pointnet2"]#,"pointnet2","dgcnn","curvenet"]
-deformation="RotationZ"
+models=["pointnet","pointnet2","dgcnn","curvenet"]
+deformation="Twisting"
 #sigmas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4,1.5]#[0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3]
 counter = 0
-base_path = "../output/certify/scanobjectnn/RotationZ/"
-save_path = '/home/santamgp/Downloads/CVPRGraphics/TestingREADME/'
+base_path = "../output/certify/Twisting/"
+save_path = '/home/santamgp/Downloads/CVPRGraphics/SupplementaryMaterial/ExplicitSigmaGraphsModelNet40/'
 current_experiment = ""
 
 
@@ -53,10 +54,28 @@ def hyperVolofRotXZ(radius):
     transformedDomain = np.square(np.sqrt(2)*radius) #area of a 2-ball in L1 norm (rhombus)
     return transformedDomain
 
-#this numbers based on the fact that ,at max, 4 models will be requested
-rows = math.ceil(len(models)/2)
-columns = 2 if len(models)>=2 else 1
+abreviations={
+        "pointnet": "PointNet",
+        "Pointnet": "PointNet",
+        "pointnet2":"PointNet++",
+        "Pointnet2":"PointNet++",
+        "dgcnn":"DGCNN",
+        "Dgcnn":"DGCNN",
+        "curvenet":"CurveNet",
+        "Curvenet":"CurveNet"
+        }
 
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Times"],
+})
+#this numbers based on the fact that ,at max, 4 models will be requested
+# rows = math.ceil(len(models)/2)
+# columns = 2 if len(models)>=2 else 1
+rows = 1
+columns = 4
+dataset_ylabel = "\\textbf{ModelNet40}\n\nCertified Accuracy"
 def DomainTransformer(deformation,radius):
     switcher = {
         "Rotation"   : hyperVolofRotXYZ,
@@ -65,13 +84,15 @@ def DomainTransformer(deformation,radius):
     }
     return switcher.get(deformation,"not a valid deforamtion with defined hypervolume")(radius)
 
-if(len(models) == 1):
+if(len(models) <= 1):
     axes=[1]
-    fig,axes[0] = plt.subplots(1,len(models),sharey=True)#figsize=(10, 4)
+    fig,axes[0] = plt.subplots(rows,columns,sharey=True,sharex=True)#figsize=(10, 4)
     fig.suptitle(str(deformation),fontsize=20)
 else:
-    fig,axes = plt.subplots(1,len(models),sharey=True)#figsize=(10, 4)
-    fig.suptitle(str(deformation),fontsize=20)
+    fig,axes = plt.subplots(rows,columns,sharey=True,sharex=True,figsize=(12, 2.7) )
+    axes = np.reshape(axes,len(models))
+    # fig.suptitle(str(deformation),fontsize=20)
+    #fig.suptitle("Rotation Z",fontsize=20)
 for model in models:
     try:
         csvPaths = sorted(glob.glob(f"{base_path}/*{model}{deformation}*/*.csv"))
@@ -121,7 +142,8 @@ for model in models:
             else:
                 plottingDomain = EnvelopeXdomain
 
-            sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(), y=EnvelopeYvalues,label=f'Ours (Envelope) \nACR={metrics.auc(plottingDomain.tolist(), EnvelopeYvalues):.2f}')
+            sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(), y=EnvelopeYvalues,label=f'Envelope')
+            #sns.lineplot(ax=axes[counter],x=plottingDomain.tolist(), y=EnvelopeYvalues,label=f'Ours (Envelope) \nACR={metrics.auc(plottingDomain.tolist(), EnvelopeYvalues):.2f}')
             #plt.plot(plottingDomain.tolist(), EnvelopeYvalues,label='envelope')
             print('done!\n')
         
@@ -167,31 +189,38 @@ for model in models:
     
 
     # Settings, change these to your liking
-    axes[counter].set_title(f'{model}')
+    axes[counter].set_title(f'{abreviations[model]}')
 
     if (args.hypervolume):
         axes[counter].set_xlabel('certified hypervolume')
     elif deformation[:8]=="Rotation":
         axes[counter].set_xlabel('Radians',fontsize=20)
     else:
-        axes[counter].set_xlabel('certification radius',fontsize=20)
+        axes[counter].set_xlabel('certification radius',fontsize=15)
 
     if args.envelope:
         for line in axes[counter].lines[0:len(sigmas)]:
             line.set_linestyle("--")
 
-    axes[counter].set_ylabel('Certified Accuracy',fontsize=20)
+    # axes[counter].set_ylabel('Certified Accuracy',fontsize=14)
+    axes[counter].set_ylabel(dataset_ylabel,fontsize=14)
     axes[counter].set_ylim([0,1])
     axis=axes[counter].tick_params(labelsize=14)
-    # try:
-    #     axes[counter].get_legend().remove()
-    # except:
-    #     print("warning removing labels")
+    try:
+        axes[counter].get_legend().remove()
+    except:
+        print("warning removing labels")
+
+    start, end = axes[counter].get_xlim()
+    steps_desired = (end-start)/4
+    axes[counter].xaxis.set_ticks(np.arange(0, end+steps_desired, steps_desired))
+    axes[counter].xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.1f'))
     #plt.grid()
-    axes[counter].legend(loc='upper right', bbox_to_anchor=(1, 1),framealpha=0.5)
+    # if counter == 1:
+    #     axes[counter].legend(loc='upper right', bbox_to_anchor=(1, 1),framealpha=1,ncol = math.ceil((len(sigmas)+1)/2),fontsize=15)
     counter+=1
 
-
+plt.tight_layout()
 plt.savefig(f"{save_path}{deformation}.png",bbox_inches='tight')
 plt.savefig(f"{save_path}{deformation}.pdf",bbox_inches='tight')
 plt.savefig(f"{save_path}{deformation}.eps",bbox_inches='tight')

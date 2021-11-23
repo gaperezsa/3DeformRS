@@ -1,3 +1,0 @@
-dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data/ScanObjectNN | num_points: 1024 | experiment_name: dgcnnScanobjectBaseline | epochs: 200
-dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data/ScanObjectNN | num_points: 1024 | experiment_name: dgcnnScanobjectBaseline | epochs: 200
-dataset: scanobjectnn | data_dir: /home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Data/ScanObjectNN | num_points: 1024 | experiment_name: dgcnnScanobjectBaseline | epochs: 50

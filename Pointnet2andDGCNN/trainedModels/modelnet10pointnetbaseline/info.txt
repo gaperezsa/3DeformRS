@@ -1,4 +1,0 @@
-dataset: modelnet10 | experiment_name: modelnet10pointnetbaseline | epochs: 40
-dataset: modelnet10 | experiment_name: modelnet10pointnetbaseline | epochs: 40
-dataset: modelnet10 | experiment_name: modelnet10pointnetbaseline | epochs: 20
-dataset: modelnet10 | experiment_name: modelnet10pointnetbaseline | epochs: 40
