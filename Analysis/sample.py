@@ -483,18 +483,26 @@ def _GenCloudAffine(x,perturbation):
     return x
 
 
-certification_method_choices = ['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing','tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation'] 
+certification_method_choices = ['RotationX','RotationY','RotationZ','RotationXZ','RotationXYZ','Translation','Shearing','Tapering','Twisting','Squeezing','Stretching','GaussianNoise','Affine','AffineNoTranslation'] 
 
-saveFolder = '/home/santamgp/Downloads/CVPRGraphics/PullingFiguresPool/rawPLY/'
+saveFolder = '/home/santamgp/Downloads/CVPRGraphics/SupplementaryMaterial/QualitativeResultsPool/'
 
 parser = argparse.ArgumentParser(description='Certify many examples')
 parser.add_argument("--sample_class", type=int, default=0 , help="0-39, which class to sample")
 parser.add_argument('--num_points', type=int, default=2048,help='num of points to use, default 1024 recommended')
-parser.add_argument("--data_path", type=str, default='../Pointnet2andDGCNN/Data/Modelnet40fp',help="path to dataset")
-parser.add_argument("--deformation_method", type=str, default='rotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
+parser.add_argument("--data_path", type=str, default='../Data/PointNet2andDGCNN/Modelnet40fp',help="path to dataset")
+parser.add_argument("--deformation_method", type=str, default='RotationXYZ', required=True, choices=certification_method_choices, help='type of certification for certification')
 parser.add_argument("--perturbation_amount", type=float, nargs='+',help="perturbation parameter, RotationX would only use 1, affine will use 12")
+parser.add_argument('--test', action='store_true', default=False, help='test what the smoothed versions of each network classifiy this instance as')
+parser.add_argument('--search', action='store_true', default=False, help='keep looking for other amount that sum up the same')
+parser.add_argument("--sigma", type=float,help="which sigma to smooth the networks with")
+parser.add_argument("--certify_betch_sz", type=int,default=64,help="which sigma to smooth the networks with")
+
 args = parser.parse_args()
 
+# For rotaions to transform the angles to [0, pi]
+if args.deformation_method[0:8] == 'rotation' or args.deformation_method[0:8] == 'Rotation':
+        args.sigma *= math.pi 
 
 if not os.path.exists('../output/samples/'+args.deformation_method):
     os.makedirs('../output/samples/'+args.deformation_method, exist_ok=True)
@@ -502,45 +510,205 @@ if not os.path.exists('../output/samples/'+args.deformation_method):
 #dataset and loaders
 from torch_geometric.datasets import ModelNet
 import torch_geometric.transforms as T
-from torch_geometric.data import DataLoader
+from torch_geometric.data import DataLoader as TorchGeometricDataLoader
 path = osp.join(osp.dirname(osp.realpath(__file__)), args.data_path)
 pre_transform, transform = T.NormalizeScale(), T.SamplePoints(args.num_points)
 print(path)
 test_dataset = ModelNet(path, '40', False, transform, pre_transform)
-test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
+torch_geometric_test_loader = TorchGeometricDataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
 
 # iterate through the dataset
-for iterator in test_loader:
+for iterator in torch_geometric_test_loader:
     if iterator.y.item() == args.sample_class:
-        sample = iterator
+        original_sample = iterator
         break;
-
-
-['rotationX','rotationY','rotationZ','rotationXZ','rotationXYZ','translation','shearing',
-'tapering','twisting','squeezing','stretching','gaussianNoise','affine','affineNoTranslation']
 
 def Transformer(deformation,x,perturbation):
     switcher = {
-        "gaussianNoise"     : _GenCloudGaussianNoise,
-        "rotationX"         : _GenCloudRotationX,
-        "rotationY"         : _GenCloudRotationY,
-        "rotationZ"         : _GenCloudRotationZ,
-        "rotationXZ"        : _GenCloudRotationXZ,
-        "rotationXYZ"       : _GenCloudRotationXYZ,
-        "translation"       : _GenCloudTranslation,
-        "shearing"          : _GenCloudShearing,
-        "tapering"          : _GenCloudTapering,
-        "twisting"          : _GenCloudTwisting,
-        "squeezing"         : _GenCloudSqueezing,
-        "stretching"        : _GenCloudStretching,
-        "affineNoTranslation": _GenCloudAffineNoTranslation,
-        "affine"            : _GenCloudAffine,
+        "GaussianNoise"     : _GenCloudGaussianNoise,
+        "RotationX"         : _GenCloudRotationX,
+        "RotationY"         : _GenCloudRotationY,
+        "RotationZ"         : _GenCloudRotationZ,
+        "RotationXZ"        : _GenCloudRotationXZ,
+        "RotationXYZ"       : _GenCloudRotationXYZ,
+        "Translation"       : _GenCloudTranslation,
+        "Shearing"          : _GenCloudShearing,
+        "Tapering"          : _GenCloudTapering,
+        "Twisting"          : _GenCloudTwisting,
+        "Squeezing"         : _GenCloudSqueezing,
+        "Stretching"        : _GenCloudStretching,
+        "AffineNoTranslation": _GenCloudAffineNoTranslation,
+        "Affine"            : _GenCloudAffine,
     }
     return switcher.get(deformation,"not a valid deformation")(x,perturbation)
 
-PC = sample.pos[0:args.num_points].cpu().detach().numpy()
+PC = original_sample.pos[0:args.num_points].cpu().detach().numpy()
 write_ply(PC,saveFolder+'sampleClass'+str(args.sample_class)+'Original.ply')
-sample = Transformer(args.deformation_method,sample,args.perturbation_amount)
+sample = Transformer(args.deformation_method,original_sample,args.perturbation_amount)
 PC = sample.pos[0:args.num_points].cpu().detach().numpy()
 write_ply(PC,saveFolder+'sampleClass'+str(args.sample_class)+args.deformation_method+str(args.perturbation_amount)+'.ply')
+
+if args.test:
+
+    print("ah shit, here we go again")
+
+    PointNet2_base_classifier_path = "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet2andDGCNN/trainedModels/pointnetBaseline/FinalModel.pth.tar"
+    DGCNN_base_classifier_path = "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet2andDGCNN/trainedModels/dgcnnBaseline/FinalModel.pth.tar"
+
+    #use cuda if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    #send sample to device
+    sample = sample.to(device)
+
+    #Import Smooth Classifier
+    import sys
+    sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/")
+    from SmoothedClassifiers.Pointnet2andDGCNN.SmoothFlow import SmoothFlow as PN2_DGCNN_SmoothFlow
+
+    num_classes = 40
+
+
+    #PointNet++:
+    from Pointnet2andDGCNN.Trainers.pointnet2Train import Net as PointNet2_Net
+
+    #model and optimizer
+    Pointnet2_base_classifier = PointNet2_Net(num_classes).to(device)
+    Pointnet2_optimizer = torch.optim.Adam(Pointnet2_base_classifier.parameters(), lr=0.001)
+
+    #loadTrainedModel
+    checkpoint = torch.load(PointNet2_base_classifier_path)
+    Pointnet2_base_classifier.load_state_dict(checkpoint['model_param'])
+    Pointnet2_optimizer.load_state_dict(checkpoint['optimizer'])
+
+    # create the smooothed classifier g
+    Pointnet2_smoothed_classifier = PN2_DGCNN_SmoothFlow(Pointnet2_base_classifier, num_classes, args.deformation_method, args.sigma)
+
+    #predicting
+    print("Calculating PointNet++ prediction")
+    PointNet2Prediction = Pointnet2_smoothed_classifier.predict(sample,1000,0.001,args.certify_betch_sz)
+    print(f"PointNet++ prediction: class {PointNet2Prediction}, ground truth: {sample.y.item()}")
+
+    #free cuda memory
+    Pointnet2_base_classifier.to("cpu")
+
+    #DGCNN:
+    from Pointnet2andDGCNN.Trainers.dgcnnTrain import Net as DGCNN_Net
+
+    #model and optimizer
+    DGCNN_base_classifier = DGCNN_Net(num_classes, k=20).to(device)
+    DGCNN_optimizer = torch.optim.Adam(DGCNN_base_classifier.parameters(), lr=0.001)
+    DGCNN_scheduler = torch.optim.lr_scheduler.StepLR(DGCNN_optimizer, step_size=20, gamma=0.5)
+
+    #loadTrainedModel
+    checkpoint = torch.load(DGCNN_base_classifier_path)
+    DGCNN_base_classifier.load_state_dict(checkpoint['model_param'])
+    DGCNN_optimizer.load_state_dict(checkpoint['optimizer'])
+    DGCNN_scheduler.load_state_dict(checkpoint['scheduler'])
+
+    # create the smooothed classifier g
+    DGCNN_smoothed_classifier = PN2_DGCNN_SmoothFlow(DGCNN_base_classifier, num_classes, args.deformation_method, args.sigma)
+
+    #predicting
+    print("Calculating DGCNN prediction")
+    DGCNNPrediction = DGCNN_smoothed_classifier.predict(sample,1000,0.001,args.certify_betch_sz)
+    print(f"DGCNN prediction: class {DGCNNPrediction}, ground truth: {sample.y.item()}")
+
+    #free cuda memory
+    DGCNN_base_classifier.to("cpu")
+
+
+    if args.search:
+        
+        
+        while (PointNet2Prediction == DGCNNPrediction):
+
+            #find L1 or L2 norm of perturbation_amount depending on the perturbation_amount
+            if args.deformation_method[0:8] == 'rotation' or args.deformation_method[0:8] == 'Rotation':
+                targetSum = np.linalg.norm(np.array(args.perturbation_amount),ord=1)
+            else:
+                targetSum = np.linalg.norm(np.array(args.perturbation_amount),ord=2)
+
+            #dirichlet distribution makes it so that this array sums almost exactly one
+            testing_perturbation = np.squeeze(np.random.dirichlet(np.ones(len(args.perturbation_amount)),size=1))
+
+            #fit to desired perturbation sum
+            testing_perturbation *= targetSum
+
+            print(f"\nwith perturbation parameters {testing_perturbation} ...")
+
+            #sample with this perturbation
+            sample = sample.to("cpu")
+            sample = Transformer(args.deformation_method,original_sample,testing_perturbation)
+            sample = sample.to(device)
+
+            #predicting with PointNet++
+            Pointnet2_base_classifier.to(device)
+            print("Calculating PointNet++ prediction")
+            PointNet2Prediction = Pointnet2_smoothed_classifier.predict(sample,1000,0.001,args.certify_betch_sz)
+            print(f"PointNet++ prediction: class {PointNet2Prediction}, ground truth: {sample.y.item()}")
+
+            #free cuda memory
+            Pointnet2_base_classifier.to("cpu")
+
+            #predicting with DGCNN++
+            DGCNN_base_classifier.to(device)
+            print("Calculating DGCNN prediction")
+            DGCNNPrediction = DGCNN_smoothed_classifier.predict(sample,1000,0.001,args.certify_betch_sz)
+            print(f"DGCNN prediction: class {DGCNNPrediction}, ground truth: {sample.y.item()}")
+
+            #free cuda memory
+            DGCNN_base_classifier.to("cpu")
+    
+    
+
+    
+    
+
+
+    
+    
+    
+
+
+
+    '''
+    #CurveNet
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
+    from CurveNet.core.data import ModelNet40
+    from CurveNet.core.models.curvenet_cls import CurveNet
+    import numpy as np
+    from torch.utils.data import DataLoader as CurveNetDataLoader
+    from CurveNet.core.util import cal_loss, IOStream
+    import sklearn.metrics as metrics
+
+    CurveNet_test_loader = CurveNetDataLoader(ModelNet40(partition='test', num_points=args.num_points),batch_size=1, shuffle=False, drop_last=False)
+
+    #declare and load pretrained model
+    base_classifier = CurveNet(num_classes=num_classes).to(device)
+    base_classifier = nn.DataParallel(base_classifier)
+    base_classifier.load_state_dict(torch.load(args.base_classifier_path))
+    base_classifier.eval()
+
+    #PointNet
+
+    import sys
+    sys.path.insert(0, osp.join(osp.dirname(osp.realpath(__file__)),'Pointnet'))
+    #sys.path.insert(0, "/home/santamgp/Documents/CertifyingAffineTransformationsOnPointClouds/3D-RS-PointCloudCertifying/Pointnet")
+
+    from Pointnet.DataLoaders import datasets
+    from torch.utils.data import DataLoader
+    from Pointnet.model import PointNet
+
+    test_data = datasets.modelnet40(num_points=args.num_points, split='test', rotate='none')
+
+    PointNet_test_loader = DataLoader(
+        dataset=test_data,
+        batch_size=1,
+        shuffle=False,
+        num_workers=0
+    )
+    '''
 
