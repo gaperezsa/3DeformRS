@@ -743,7 +743,7 @@ class SmoothFlow(object):
         :return: the predicted class, or ABSTAIN
         """
         self.base_classifier.eval()
-        counts = self._sample_noise(x, n, batch_size)
+        counts = self._sample_noise(x, n, batch_size,False)
         top2 = counts.argsort()[::-1][:2]
         count1 = counts[top2[0]]
         count2 = counts[top2[1]]
