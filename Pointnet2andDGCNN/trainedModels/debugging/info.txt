@@ -29,3 +29,9 @@ dataset: scanobjectnn | data_dir:  | num_points: 1024 | experiment_name: debuggi
 dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
 dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
 dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2 | num_workers: 0 | model: pointnet2 | augmentation: RotationZ
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2 | num_workers: 0 | model: pointnet2 | augmentation: RotationZ
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2 | num_workers: 0 | model: pointnet2 | augmentation: RotationZ
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2 | num_workers: 0 | model: pointnet2 | augmentation: RotationZ
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2 | num_workers: 0 | model: dgcnn | augmentation: RotationZ
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: debugging | epochs: 2 | num_workers: 0 | model: dgcnn | augmentation: RotationZ
