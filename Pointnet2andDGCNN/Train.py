@@ -3,10 +3,12 @@
 import os
 import os.path as osp
 from argparse import ArgumentParser
+import math
 import torch
 import torch.nn.functional as F
 from torch.nn import Sequential as Seq, Linear as Lin, ReLU, BatchNorm1d as BN
 from torch_geometric.datasets import ModelNet
+from DeformTransform import DeformSample
 
 import sys
 import inspect
@@ -80,19 +82,33 @@ def print_to_log(text, txt_file_path):
 if __name__ == '__main__':
 
     dataset_choices = ['modelnet40','modelnet10','scanobjectnn']
+    model_choices = ['pointnet2','dgcnn']
+    augmentation_choices = ['none','RotationX','RotationY','RotationZ','RotationXZ','RotationXYZ','Translation','Shearing','Tapering','Twisting','Squeezing','Stretching','GaussianNoise','Affine','AffineNoTranslation'] 
 
     #arguments passed
     parser = ArgumentParser(description='PyTorch code for GeoCer')
     parser.add_argument("--dataset", default='modelnet40',choices=dataset_choices, help="which dataset")
-    parser.add_argument("--data_dir", type=str, default='')
+    parser.add_argument("--data_dir", type=str, default='',help="if data was placed correctly, no need to pass this value")
     parser.add_argument("--num_points", type=int, default=1024,help="amount of points to sample per pointcloud")
     parser.add_argument('--experiment_name', type=str, default='tutorial', required=True)
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train (default: 200)')
-    parser.add_argument('--batch_sz', type=int, default=200, help='number of epochs to train (default: 200)')
+    parser.add_argument('--batch_sz', type=int, default=32, help='number of pointclouds per batch')
     parser.add_argument('--num_workers', type=int, default=8, help='number of workers for the dataloaders')
-    parser.add_argument('--model', type=str, default='pointnet2', help='which model')
-    parser.add_argument('--augmentation', type=str, default='RotationZ', help='deformation to augment against')
+    parser.add_argument('--model', type=str, default='pointnet2',choices=model_choices, help='which model')
+    parser.add_argument('--augmentation', type=str, default='none',choices=augmentation_choices, help='deformation to augment against')
+    parser.add_argument('--sigma', type=float, default=0.1, help='nosie hyperparameter')
+
     args = parser.parse_args()
+
+
+    if args.augmentation[0:8] == 'rotation' or args.augmentation[0:8] == 'Rotation':
+        if args.sigma > 1:
+            args.sigma = 1
+            print("sigma above 1 for rotations is redundant (1 means +-Pi radians), setting sigma=1")
+        
+        # For rotaions to transform the angles to [0, pi]
+        args.sigma *= math.pi 
+
 
     # setup tensorboard
     from torch.utils.tensorboard import SummaryWriter
@@ -123,7 +139,9 @@ if __name__ == '__main__':
     #dataset and loaders
     if args.dataset == 'modelnet40':
         path = osp.join(osp.dirname(osp.realpath(__file__)),'..','Data/PointNet2andDGCNN/Modelnet40fp')
-        pre_transform, transform = T.NormalizeScale(), T.SamplePoints(args.num_points) #convert to pointcloud
+        CustomDeform = DeformSample(deformation = args.augmentation, sigma = args.sigma)
+        transform = T.Compose([T.SamplePoints(args.num_points),DeformSample(deformation = args.augmentation, sigma = args.sigma)]) #convert to point clouds then deform it
+        pre_transform = T.NormalizeScale()
         train_dataset = ModelNet(path, '40', True, transform, pre_transform)
         test_dataset = ModelNet(path, '40', False, transform, pre_transform)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_sz, shuffle=True,
@@ -135,7 +153,9 @@ if __name__ == '__main__':
     elif args.dataset == 'modelnet10':
         #dataset and loaders
         path = osp.join(osp.dirname(osp.realpath(__file__)),'..','Data/PointNet2andDGCNN/Modelnet10fp')
-        pre_transform, transform = T.NormalizeScale(), T.SamplePoints(args.num_points) #convert to pointcloud
+        CustomDeform = DeformSample(deformation = args.augmentation, sigma = args.sigma)
+        transform = T.Compose([T.SamplePoints(args.num_points),CustomDeform]) #convert to point clouds then deform it
+        pre_transform = T.NormalizeScale()
         train_dataset = ModelNet(path, '10', True, transform, pre_transform)
         test_dataset = ModelNet(path, '10', False, transform, pre_transform)
         train_loader = DataLoader(train_dataset, batch_size=args.batch_sz, shuffle=True,
@@ -173,7 +193,7 @@ if __name__ == '__main__':
             previous_epochs=checkpoint['epoch']
             print(f'previous model found, previously trained for {previous_epochs} epochs,resuming training')
         except:
-            print('no pretrained model found')
+            print('no pretrained model found or wrong matching')
 
 
     elif(args.model == "dgcnn"):
@@ -199,7 +219,8 @@ if __name__ == '__main__':
         test_acc = test(test_loader)
         print('Epoch: {:03d}, Test: {:.4f}'.format(epoch, test_acc))
         if test_acc >= bestTestAcc:
-            #new best accuracy, save model (take into account dgcnn also should save the cheduler state)
+            print("\nsaving model\n")
+            #new best accuracy, save model (take into account dgcnn also should save the scheduler state)
             if (args.model == "pointnet2"):
                 torch.save(
                             {

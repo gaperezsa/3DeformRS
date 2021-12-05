@@ -69,7 +69,7 @@ class ScanObjectNN(torch.utils.data.Dataset):
                 (texture_resolution, texture_resolution, 3) map is created per face.
         """
         super().__init__()
-        self.data_dir= osp.join(osp.dirname(osp.realpath(__file__)), '..','..','Data/ScanObjectNN/') if data_dir=='' else data_dir
+        self.data_dir= osp.join(osp.dirname(osp.realpath(__file__)),'..','Data/ScanObjectNN/') if data_dir=='' else data_dir
         data_dir = self.data_dir
         self.nb_points = nb_points
         self.normals = normals

@@ -1,0 +1,1 @@
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: dgcnnTwisting0.8 | epochs: 150 | batch_sz: 64 | num_workers: 10 | model: dgcnn | augmentation: Twisting | sigma: 0.8

@@ -1,0 +1,3 @@
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: pointNet2Translation0.2 | epochs: 150 | batch_sz: 64 | num_workers: 10 | model: pointnet2 | augmentation: Translation | sigma: 0.2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: pointNet2Translation0.2 | epochs: 150 | batch_sz: 64 | num_workers: 10 | model: dgcnn | augmentation: Translation | sigma: 0.2
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: pointNet2Translation0.2 | epochs: 150 | batch_sz: 64 | num_workers: 10 | model: pointnet2 | augmentation: Translation | sigma: 0.2

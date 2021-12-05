@@ -1,0 +1,1 @@
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: Debugging | epochs: 20 | batch_sz: 64 | num_workers: 10 | model: pointnet2 | augmentation: Affine | sigma: 0.1
