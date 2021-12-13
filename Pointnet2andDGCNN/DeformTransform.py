@@ -10,10 +10,10 @@ class DeformSample():
     Torch geometric Data type object rather than a Batch object. Also, 
 
     Args:
-        deformation (string): which deformation is going to be used. (default:RotationZ)
+        deformation (string): which deformation is going to be used. (default:none)
         sigma (float):noise hyperparameter for the normal / uniform sampling to be done. (default: 0.1)
     """
-    def __init__(self, deformation="RotationZ", sigma=0.1):
+    def __init__(self, deformation="none", sigma=0.1):
         self.deformation = deformation
         self.sigma = sigma
 

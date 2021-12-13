@@ -41,6 +41,10 @@ if (args.certify_method[0:8] == 'rotation' or args.certify_method[0:8] == 'Rotat
     args.sigma = 1
     print("sigma above 1 for rotations is redundant (1 means +-Pi radians), setting sigma=1")
 
+if (args.certify_method[0:8] == 'rotation' or args.certify_method[0:8] == 'Rotation') and (not args.uniform) :
+    args.uniform = True
+    print("highly unusual to try certify against Rotatation type deformations without --uniform flag\nflag will be forcefully set to True, however, if this was intentional, please comment this line on Certify.py and re-run")
+
 
 # full path for output
 args.basedir = os.path.join('output/certify',args.dataset,args.certify_method, args.experiment_name)

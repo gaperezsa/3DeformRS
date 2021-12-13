@@ -96,7 +96,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=8, help='number of workers for the dataloaders')
     parser.add_argument('--model', type=str, default='pointnet2',choices=model_choices, help='which model')
     parser.add_argument('--augmentation', type=str, default='none',choices=augmentation_choices, help='deformation to augment against')
-    parser.add_argument('--sigma', type=float, default=0.1, help='nosie hyperparameter')
+    parser.add_argument('--sigma', type=float, default=0.1, help='noise hyperparameter to train on. not used if no augmentation')
 
     args = parser.parse_args()
 

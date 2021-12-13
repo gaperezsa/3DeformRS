@@ -1,0 +1,1 @@
+dataset: modelnet40 | data_dir:  | num_points: 1024 | experiment_name: pointNet2RotationZ0.2 | epochs: 200 | batch_sz: 32 | num_workers: 10 | model: pointnet2 | augmentation: RotationZ | sigma: 0.6283185307179586
