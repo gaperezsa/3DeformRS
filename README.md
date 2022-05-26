@@ -1,5 +1,5 @@
 # 3DeformRS
-Official implementation of "3DeformRS: Certifying Spatial Deformations on Point Clouds"
+Official implementation of the CVPR'22 paper "3DeformRS: Certifying Spatial Deformations on Point Clouds"
 
 ![3DeformRS](./pull_pc.png)
 
